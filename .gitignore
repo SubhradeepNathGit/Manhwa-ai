@@ -9,7 +9,9 @@ venv/
 env/
 .env
 *.json
-
+.pdf
+.mp4
+.mp3
 # VS Code
 .vscode/
 

@@ -36,7 +36,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # 6. Copy application code
 # ============================
 COPY app ./app
-COPY service_account.json /app/service_account.json
+COPY service_account.json .
 # COPY job_status ./job_status
 # ============================
 # 7. Expose default port (Cloud Run uses $PORT)

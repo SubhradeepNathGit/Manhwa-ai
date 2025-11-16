@@ -3,7 +3,7 @@
 # ============================
 FROM python:3.11-slim
 
-# ============================
+# =============================
 # 2. Install system dependencies
 # ============================
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -41,8 +41,8 @@ COPY app ./app
 # ============================
 # 7. Expose default port (Cloud Run uses $PORT)
 # ============================
-ENV PORT=8080
-EXPOSE 8080
+# ENV PORT=8080
+# EXPOSE 8080
 
 # ============================
 # 8. Start FastAPI with Uvicorn

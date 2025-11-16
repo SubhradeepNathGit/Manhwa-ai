@@ -46,6 +46,7 @@ COPY app ./app
 
 # ============================
 # 8. Start FastAPI with Uvicorn
-# Cloud Run will inject PORT (usually 8080)
+
 # ============================
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port $PORT"]
+# Cloud Run will inject the $PORT variable, and uvicorn will read it
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "${PORT}"]

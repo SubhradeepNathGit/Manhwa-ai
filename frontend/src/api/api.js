@@ -2,7 +2,7 @@
 // API CONFIG
 // ---------------------------------------------------------
 
-const API_URL = import.meta.env.VITE_API_BASE_URL;
+const API_URL = import.meta.env.VITE_API_BASE_URL; // example: https://manhwa-backend-xxx.a.run.app
 
 async function parseJSONResponse(response) {
   try {
@@ -32,12 +32,12 @@ function normalizeStoryData(data) {
 }
 
 // ---------------------------------------------------------
-// 1. Generate Audio Story
+// 1. Generate Audio Story  (POST /api/v1/generate_audio_story)
 // ---------------------------------------------------------
 
 export const generateAudioStory = async (formData) => {
   const response = await fetchWithRetry(
-    `${API_URL}/generate_audio_story`,
+    `${API_URL}/api/v1/generate_audio_story`,
     {
       method: "POST",
       body: formData,
@@ -51,11 +51,11 @@ export const generateAudioStory = async (formData) => {
 };
 
 // ---------------------------------------------------------
-// 2. Generate Video
+// 2. Generate Video  (POST /api/v1/generate_video)
 // ---------------------------------------------------------
 
 export const generateVideo = async (storyData) => {
-  const response = await fetchWithRetry(`${API_URL}/generate_video`, {
+  const response = await fetchWithRetry(`${API_URL}/api/v1/generate_video`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(storyData),
@@ -67,17 +67,15 @@ export const generateVideo = async (storyData) => {
 };
 
 // ---------------------------------------------------------
-// 3. Correct Polling Endpoint
+// 3. Poll Video Status  (GET /api/v1/video_status/{jobId})
 // ---------------------------------------------------------
 
 export const getVideoStatus = async (jobId) => {
   if (!jobId) throw new Error("Job ID missing");
 
   const response = await fetchWithRetry(
-    `${API_URL}/video_status/${jobId}`,
-    {
-      method: "GET",
-    }
+    `${API_URL}/api/v1/video_status/${jobId}`,
+    { method: "GET" }
   );
 
   if (!response.ok) throw await parseJSONResponse(response);

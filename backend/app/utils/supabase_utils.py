@@ -7,7 +7,7 @@ from supabase import create_client, Client
 
 # -------------------------------------------------------------
 # Load required environment variables
-# -------------------------------------------------------------
+# ---------------------------------------------------------------
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
 SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET")

@@ -33,12 +33,17 @@ app = FastAPI(
 # -----------------------------------------------------
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
+   allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "http://manhwa-ai-theta.vercel.app",
-        "http://manhwa-backend-h7g66jyc2q-el.a.run.app",
-        # "*",  # dev only
+
+        # Your real Vercel domains:
+        "https://manhwa-a1wv8f96g-anurag-bitans-projects.vercel.app",
+        "https://manhwa-ai-git-main-anurag-bitans-projects.vercel.app",
+        "https://manhwa-ai-theta.vercel.app",
+        "*.vercel.app",
+        # Cloud Run domain
+        "https://manhwa-backend-h7g66jyc2q-el.a.run.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],

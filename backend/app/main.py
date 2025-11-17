@@ -36,7 +36,8 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
-        "https://manhwa-ai-theta.vercel.app",
+        "http://manhwa-ai-theta.vercel.app",
+        "http://manhwa-backend-h7g66jyc2q-el.a.run.app",
         # "*",  # dev only
     ],
     allow_credentials=True,

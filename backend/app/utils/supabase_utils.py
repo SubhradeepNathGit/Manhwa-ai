@@ -10,7 +10,7 @@ from supabase import create_client, Client
 # ---------------------------------------------------------------
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
-SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET")
+SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET_NAME")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise EnvironmentError(

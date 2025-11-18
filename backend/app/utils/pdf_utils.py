@@ -17,7 +17,7 @@ from PIL import Image, ImageOps, ImageFilter
 # ----------------------------------------------------------
 # 1. Convert PDF pages → high quality PIL images
 # ----------------------------------------------------------
-def _load_pdf_pages(pdf_path: str, dpi: int = 350, max_pages: int = 50) -> List[Image.Image]:
+def _load_pdf_pages(pdf_path: str, dpi: int = 200, max_pages: int = 50) -> List[Image.Image]:
     pages = convert_from_path(
         pdf_path,
         dpi=dpi,
@@ -116,7 +116,7 @@ def pdf_to_images(pdf_path: str) -> List[bytes]:
 # =====================================================================
 def extract_pdf_images_high_quality(
     pdf_path: str,
-    dpi: int = 350,
+    dpi: int = 200,
     max_pages: int = 50
 ) -> List[Image.Image]:
     """

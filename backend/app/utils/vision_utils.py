@@ -20,7 +20,7 @@ from typing import Optional
 # pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 # ----------------------------------------------------------
 
-
+Image.MAX_IMAGE_PIXELS = None
 # ----------------------------------------------------------
 # 2. Simple OCR function (LOCAL)
 # ----------------------------------------------------------

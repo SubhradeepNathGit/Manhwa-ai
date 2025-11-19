@@ -124,7 +124,7 @@ async def health():
 # -----------------------------------------------------
 @app.on_event("startup")
 async def startup():
-    print("\n==============================")
+    print("\n================================")
     print("  Manhwa AI Backend Started")
     print("==============================")
     print("Docs: http://localhost:8000/docs")

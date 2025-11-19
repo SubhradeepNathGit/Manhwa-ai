@@ -12,6 +12,7 @@ import requests
 from fastapi import APIRouter, HTTPException, BackgroundTasks
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
+from PIL import Image
 
 # MoviePy imports (fixed order)
 from moviepy.editor import (
@@ -22,12 +23,6 @@ from moviepy.editor import (
     ColorClip
 )
 
-# Supabase uploader
-from app.utils.supabase_utils import supabase_upload
-
-# Cinematic clip generator
-from app.utils.image_utils import generate_cinematic_clip
-
 router = APIRouter()
 
 VIDEO_FPS = 30
@@ -36,15 +31,13 @@ VIDEO_RESOLUTION = (1080, 1920)
 STATUS_DIR = os.path.join(os.getcwd(), "job_status")
 os.makedirs(STATUS_DIR, exist_ok=True)
 
+
 # ---------------------------------------------------------------
 # VIDEO COMPRESSION (H.264 + CRF)
 # ---------------------------------------------------------------
 def compress_video(input_path: str, output_path: str, crf: int = 28) -> str:
     """
     Compress video using ffmpeg (lower file size for Supabase limit).
-    crf 23 = good quality
-    crf 28 = low size
-    crf 30+ = very small file
     """
     try:
         import subprocess
@@ -62,13 +55,13 @@ def compress_video(input_path: str, output_path: str, crf: int = 28) -> str:
 
         print("🔧 Compressing video:", " ".join(cmd))
         subprocess.run(cmd, check=True)
-
         print("✔ Compression finished:", output_path)
         return output_path
 
     except Exception as e:
         print("❌ Compression failed, using original:", e)
         return input_path
+
 
 def write_status(job_id: str, data: dict):
     """Write job status JSON. Use default=str to avoid serialization errors."""
@@ -90,12 +83,13 @@ class VideoGenerationRequest(BaseModel):
 # --------------------------
 # Download file (sync)
 # --------------------------
-def download_file_sync(url: str, local_path: str, retries: int = 2):
+def download_file_sync(url: str, local_path: str, retries: int = 2, timeout: int = 30):
     headers = {"User-Agent": "Manhwa-AI/1.0"}
 
+    last_err = None
     for attempt in range(retries + 1):
         try:
-            with requests.get(url, stream=True, timeout=30, headers=headers) as r:
+            with requests.get(url, stream=True, timeout=timeout, headers=headers) as r:
                 r.raise_for_status()
                 with open(local_path, "wb") as f:
                     for chunk in r.iter_content(chunk_size=8192):
@@ -111,12 +105,66 @@ def download_file_sync(url: str, local_path: str, retries: int = 2):
 
 
 # --------------------------
-# Upload via Supabase
+# Upload helper (lazy import of supabase_utils)
 # --------------------------
-def upload_local_file_to_supabase(local_path: str, dest_path: str, ct: str):
-    with open(local_path, "rb") as f:
-        data = f.read()
-    return supabase_upload(data, dest_path, ct)
+def upload_local_file_to_supabase(local_path: str, dest_path: str, ct: str, retries: int = 3, backoff: float = 1.0):
+    """
+    Upload a local file to Supabase via the supabase_upload helper.
+    We import supabase_upload lazily to avoid import-time failure if env is missing.
+    Retries on transient errors. If 'Payload too large' (413) occurs for videos, raise a clear error.
+    """
+    # Lazy import to avoid crashing at container startup if env not set
+    try:
+        from app.utils.supabase_utils import supabase_upload
+    except Exception as e:
+        raise RuntimeError(f"Supabase uploader not available: {e}")
+
+    last_exc = None
+    for attempt in range(1, retries + 1):
+        try:
+            with open(local_path, "rb") as f:
+                data = f.read()
+            result = supabase_upload(data, dest_path, ct)
+            return result
+        except Exception as e:
+            last_exc = e
+            msg = str(e)
+            print(f"[UPLOAD] Attempt {attempt}/{retries} failed for {dest_path}: {msg}")
+
+            # If server returned a 413-like message, bubble up quickly
+            if "413" in msg or "Payload too large" in msg or "exceeded the maximum" in msg:
+                # For videos: we may try compression upstream; caller may compress and retry.
+                raise RuntimeError(f"Upload failed (413 Payload too large) for {dest_path}: {msg}")
+
+            time.sleep(backoff * attempt)
+
+    raise RuntimeError(f"Upload failed after {retries} attempts: {last_exc}")
+
+
+# ================================================================
+# Helper: choose animation type automatically based on image shape
+# ================================================================
+def choose_animation_for_image(image_path: str, requested_anim: str = None) -> str:
+    """
+    If the incoming scene doesn't specify animation_type,
+    decide automatically:
+      - tall images => 'pan_down' (scroll)
+      - wide/normal => 'static_zoom' (gentle zoom)
+    """
+    if requested_anim:
+        return requested_anim
+
+    try:
+        with Image.open(image_path) as im:
+            w, h = im.size
+        ratio = h / max(1, w)
+        if ratio > 1.25:
+            return "pan_down"
+        else:
+            return "static_zoom"
+    except Exception as e:
+        print(f"[ANIM CHOICE] Failed to open image {image_path}: {e}")
+        return "static_zoom"
 
 
 # ================================================================
@@ -153,17 +201,23 @@ def render_video_sync(manga_name, audio_url, image_urls, segments, temp_dir):
                 dur = float(seg.get("duration", 2.0))
                 start = float(seg.get("start_time", 0.0))
                 coords = seg.get("crop_coordinates", [0, 0, 1000, 1000])
-                anim = seg.get("animation_type", "static_zoom")
+                anim = seg.get("animation_type", None)
 
                 if img_index not in local_images:
-                    print(f"[WARN] segment {idx} missing image")
+                    print(f"[WARN] segment {idx} missing image index {img_index}")
                     continue
+
+                # auto-pick animation if not specified
+                chosen_anim = choose_animation_for_image(local_images[img_index], anim)
+
+                # import generate_cinematic_clip lazily to keep module import light
+                from app.utils.image_utils import generate_cinematic_clip
 
                 clip = generate_cinematic_clip(
                     image_path=local_images[img_index],
                     coords_1000=coords,
                     clip_duration=dur,
-                    animation_type=anim
+                    animation_type=chosen_anim
                 )
 
                 clip = clip.set_start(start)
@@ -172,6 +226,7 @@ def render_video_sync(manga_name, audio_url, image_urls, segments, temp_dir):
 
             except Exception as e:
                 print(f"[ERROR] segment {idx}: {e}")
+                traceback.print_exc()
 
         if not video_clips:
             raise RuntimeError("No video clips were generated.")
@@ -184,18 +239,23 @@ def render_video_sync(manga_name, audio_url, image_urls, segments, temp_dir):
 
         out_name = f"{manga_name.replace(' ', '_')}.mp4"
         out_path = os.path.join(temp_dir, out_name)
-        
+
         compressed_path = out_path.replace(".mp4", "_compressed.mp4")
 
-
         print("--- [RENDER] Writing MP4 ---")
+        # Set threads to at least 2 to speed-up encode when available.
+        try:
+            threads = max(1, min(4, os.cpu_count() or 1))
+        except Exception:
+            threads = 2
+
         final_video.write_videofile(
             compressed_path,
             fps=VIDEO_FPS,
             codec="libx264",
             audio_codec="aac",
             bitrate="3000k",   # LOWER BITRATE = SMALLER VIDEO
-            threads=2,
+            threads=threads,
             preset="ultrafast",
         )
 
@@ -294,15 +354,12 @@ def _render_and_upload_full_job(manga_name, audio_url, image_urls, segments, tem
 
         final_path = render_video_sync(manga_name, audio_url, image_urls, segments, temp_dir)
 
-        # NEW — Compress before uploading
+        # NEW — Compress before uploading (extra safety)
         compressed_path = os.path.join(temp_dir, "compressed_final.mp4")
         final_path = compress_video(final_path, compressed_path, crf=28)
 
-
         dest = f"videos/{job_id}/{os.path.basename(final_path)}"
 
-
-        # NOTE: this function is synchronous; call it directly in background task.
         try:
             uploaded_url = upload_local_file_to_supabase(final_path, dest, "video/mp4")
             print(f"[JOB {job_id}] Final video uploaded: {uploaded_url}")

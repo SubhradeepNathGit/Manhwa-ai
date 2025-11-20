@@ -22,6 +22,8 @@ async function fetchWithRetry(url, options, retries = 1) {
   }
 }
 
+
+
 // Normalize backend response (image_urls / panel_images)
 function normalizeStoryData(data) {
   const imageList = data.image_urls || data.panel_images || [];
@@ -81,4 +83,38 @@ export const getVideoStatus = async (jobId) => {
   if (!response.ok) throw await parseJSONResponse(response);
 
   return await parseJSONResponse(response);
+};
+
+// Add new streaming function
+export const streamPanelExtraction = (jobId, onPanel, onComplete, onError) => {
+  const eventSource = new EventSource(
+    `${API_URL}/api/v1/stream_panels/${jobId}`
+  );
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      
+      if (data.type === 'panel') {
+        onPanel(data);  // Called for each panel
+      } else if (data.type === 'complete') {
+        onComplete(data);
+        eventSource.close();
+      } else if (data.type === 'error') {
+        onError(data.message);
+        eventSource.close();
+      }
+    } catch (err) {
+      console.error('Stream parse error:', err);
+    }
+  };
+
+  eventSource.onerror = (err) => {
+    console.error('EventSource error:', err);
+    onError('Stream connection failed');
+    eventSource.close();
+  };
+
+  // Return function to close stream manually
+  return () => eventSource.close();
 };

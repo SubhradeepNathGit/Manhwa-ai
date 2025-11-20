@@ -1,4 +1,4 @@
-/* FULL WORKING Home.jsx — Original UI + Fixed Logic (minimal changes) */
+/* OPTIMIZED Home.jsx with Real-Time Panel Streaming */
 
 import React, { useState, useRef, useEffect } from "react";
 import {
@@ -33,8 +33,13 @@ const Home = () => {
   const [error, setError] = useState(null);
   const [jobId, setJobId] = useState(null);
 
-  // NEW: panel images extracted by backend (display instantly)
+  // Panel extraction states
   const [panelImages, setPanelImages] = useState([]);
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [extractionProgress, setExtractionProgress] = useState("");
+
+  // ⚡ NEW: Store EventSource for cleanup
+  const eventSourceRef = useRef(null);
 
   const [settings, setSettings] = useState({
     frameDuration: 3,
@@ -44,7 +49,7 @@ const Home = () => {
   const fileInputRef = useRef(null);
 
   // ===================================================================
-  // FIXED POLLING — correct backend route: /api/v1/video_status/{id}
+  // POLLING FOR VIDEO STATUS
   // ===================================================================
   useEffect(() => {
     if (!jobId) return;
@@ -57,7 +62,6 @@ const Home = () => {
         const data = await res.json();
 
         if (data.status === "completed") {
-          // backend must set video_url (public url)
           setVideoUrl(data.video_url);
           setIsGenerating(false);
           setProgress(100);
@@ -76,6 +80,18 @@ const Home = () => {
 
     return () => clearInterval(interval);
   }, [jobId]);
+
+  // ===================================================================
+  // CLEANUP EVENTSOURCE ON UNMOUNT
+  // ===================================================================
+  useEffect(() => {
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+        eventSourceRef.current = null;
+      }
+    };
+  }, []);
 
   // ===================================================================
   // VALIDATIONS
@@ -101,10 +117,12 @@ const Home = () => {
       setVideoUrl(null);
       setShowPreview(false);
       setMangaName(selectedFile.name.replace(".pdf", ""));
-      setPanelImages([]); // clear previous panels
+      setPanelImages([]);
       setProgress(0);
       setJobId(null);
       setError(null);
+      setIsExtracting(false);
+      setExtractionProgress("");
     }
   };
 
@@ -123,11 +141,68 @@ const Home = () => {
     setProgress(0);
     setJobId(null);
     setPanelImages([]);
+    setIsExtracting(false);
+    setExtractionProgress("");
+    
+    // Close any active streaming
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+      eventSourceRef.current = null;
+    }
+    
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // ===================================================================
-  // MAIN GENERATE FUNCTION
+  // ⚡ NEW: STREAMING PANEL EXTRACTION
+  // ===================================================================
+  const startPanelStreaming = (streamJobId) => {
+    // Close any existing stream
+    if (eventSourceRef.current) {
+      eventSourceRef.current.close();
+    }
+
+    const eventSource = new EventSource(
+      `${API_BASE_URL}/api/v1/stream_panels/${streamJobId}`
+    );
+    eventSourceRef.current = eventSource;
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "panel") {
+          // ⚡ Add panel immediately as it's uploaded!
+          setPanelImages((prev) => [...prev, data.url]);
+          setExtractionProgress(data.progress);
+        } else if (data.type === "complete") {
+          console.log(`✅ All ${data.total} panels extracted`);
+          setIsExtracting(false);
+          setExtractionProgress(`${data.total}/${data.total}`);
+          eventSource.close();
+          eventSourceRef.current = null;
+        } else if (data.type === "error") {
+          setError(data.message || "Panel extraction failed");
+          setIsExtracting(false);
+          eventSource.close();
+          eventSourceRef.current = null;
+        }
+      } catch (err) {
+        console.error("Stream parse error:", err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error("EventSource error:", err);
+      setError("Stream connection failed");
+      setIsExtracting(false);
+      eventSource.close();
+      eventSourceRef.current = null;
+    };
+  };
+
+  // ===================================================================
+  // MAIN GENERATE FUNCTION (OPTIMIZED)
   // ===================================================================
   const handleCreateVideo = async () => {
     if (!file) {
@@ -136,11 +211,14 @@ const Home = () => {
     }
 
     setIsGenerating(true);
+    setIsExtracting(true);
     setProgress(10);
     setError(null);
+    setPanelImages([]);
+    setExtractionProgress("");
 
     try {
-      // ------------------ STEP 1: AUDIO + SCRIPT ------------------
+      // ------------------ STEP 1: Start Audio Story Generation ------------------
       const formData = new FormData();
       formData.append("manga_pdf", file);
       formData.append("manga_name", mangaName);
@@ -152,21 +230,45 @@ const Home = () => {
       });
 
       if (!audioRes.ok) {
-        // try to parse backend error
         let errBody = {};
-        try { errBody = await audioRes.json(); } catch { errBody = { detail: "Audio generation failed" }; }
+        try {
+          errBody = await audioRes.json();
+        } catch {
+          errBody = { detail: "Audio generation failed" };
+        }
         throw new Error(errBody.detail || errBody.message || "Audio generation failed");
       }
 
       const audioData = await audioRes.json();
 
-      // NEW: show extracted panel images immediately (backend may return image_urls or panel_images)
-      const imgs = audioData.image_urls || audioData.panel_images || [];
-      setPanelImages(Array.isArray(imgs) ? imgs : []);
+      // ⚡ OPTION 1: Use streaming if available (NEW)
+      if (audioData.stream_available && audioData.job_id) {
+        console.log("✅ Using real-time streaming for panels");
+        startPanelStreaming(audioData.job_id);
+        setProgress(20);
+        
+        // Wait for extraction to complete before continuing
+        // (Frontend will show panels in real-time via EventSource)
+        await new Promise((resolve) => {
+          const checkInterval = setInterval(() => {
+            if (!isExtracting || panelImages.length > 0) {
+              clearInterval(checkInterval);
+              resolve();
+            }
+          }, 500);
+        });
+      } 
+      // ⚡ OPTION 2: Fallback to immediate display (OLD - backward compatible)
+      else {
+        console.log("✅ Using immediate panel display (fallback)");
+        const imgs = audioData.image_urls || audioData.panel_images || [];
+        setPanelImages(Array.isArray(imgs) ? imgs : []);
+        setIsExtracting(false);
+      }
 
       setProgress(40);
 
-      // ------------------ STEP 2: Preview + full video ------------------
+      // ------------------ STEP 2: Generate Video ------------------
       const videoRes = await fetch(`${API_BASE_URL}/api/v1/generate_video`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -175,25 +277,29 @@ const Home = () => {
 
       if (!videoRes.ok) {
         let errBody = {};
-        try { errBody = await videoRes.json(); } catch { errBody = { detail: "Video generation failed" }; }
+        try {
+          errBody = await videoRes.json();
+        } catch {
+          errBody = { detail: "Video generation failed" };
+        }
         throw new Error(errBody.detail || errBody.message || "Video generation failed");
       }
 
       const videoData = await videoRes.json();
 
-      // show the preview returned by backend (5s preview)
+      // Show preview if available
       if (videoData.preview_url) {
         setPreviewUrl(videoData.preview_url);
-        setShowPreview(true); // keep preview visible while background final render runs
+        setShowPreview(true);
       }
 
       setJobId(videoData.job_id || null);
       setProgress(70);
 
-      // DO NOT auto-hide preview after 3s — keep visible while processing
     } catch (err) {
       setError(err.message || String(err));
       setIsGenerating(false);
+      setIsExtracting(false);
       setProgress(0);
     }
   };
@@ -230,6 +336,19 @@ const Home = () => {
         @keyframes shimmer {
           0% { background-position: -200% 0; }
           100% { background-position: 200% 0; }
+        }
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.3s ease-out;
         }
       `}</style>
 
@@ -308,23 +427,55 @@ const Home = () => {
             )}
           </div>
 
-          {/* NEW: show panel images immediately after extraction */}
+          {/* ⚡ EXTRACTION PROGRESS BAR (NEW) */}
+          {isExtracting && (
+            <div className="mt-4 p-4 bg-purple-900/20 rounded-xl border border-purple-500/30">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-semibold text-purple-300">
+                  Extracting panels...
+                </span>
+                <span className="text-xs text-purple-400">{extractionProgress}</span>
+              </div>
+              <div className="h-2 bg-gray-700 rounded-full overflow-hidden">
+                <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 animate-pulse w-full"></div>
+              </div>
+            </div>
+          )}
+
+          {/* ⚡ PANEL GRID (Real-Time Updates!) */}
           {panelImages && panelImages.length > 0 && (
             <div className="mt-6 bg-gray-900/40 p-4 rounded-2xl border border-purple-500/20">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold">Extracted Panels</h3>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-purple-400" />
+                  Extracted Panels {isExtracting && "(Live)"}
+                </h3>
                 <span className="text-sm text-gray-400">{panelImages.length} panels</span>
               </div>
 
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {panelImages.map((url, idx) => (
-                  <img
-                    key={idx}
-                    src={url}
-                    alt={`panel-${idx}`}
-                    className="w-full h-36 object-cover rounded-lg border border-gray-800"
-                  />
+                  <div key={idx} className="relative group animate-fadeIn">
+                    <img
+                      src={url}
+                      alt={`panel-${idx}`}
+                      className="w-full h-36 object-cover rounded-lg border border-gray-800 transition-transform group-hover:scale-105"
+                    />
+                    {/* ⚡ Show "NEW" badge for recently added */}
+                    {idx === panelImages.length - 1 && isExtracting && (
+                      <span className="absolute top-2 right-2 px-2 py-1 bg-green-500 text-xs font-bold rounded-full animate-pulse">
+                        NEW
+                      </span>
+                    )}
+                  </div>
                 ))}
+
+                {/* Show loading placeholder for next panel */}
+                {isExtracting && (
+                  <div className="w-full h-36 bg-gray-800/50 rounded-lg border border-dashed border-gray-700 animate-pulse flex items-center justify-center">
+                    <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />
+                  </div>
+                )}
               </div>
             </div>
           )}
@@ -337,7 +488,7 @@ const Home = () => {
           )}
         </div>
 
-        {/* SETTINGS (unchanged) */}
+        {/* SETTINGS */}
         <div className="bg-gray-900/40 border border-purple-500/30 rounded-2xl p-6">
           <div className="flex items-center gap-2 mb-4">
             <Settings className="w-5 h-5 text-purple-400" />

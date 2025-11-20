@@ -45,9 +45,11 @@ app.add_middleware(
         # Cloud Run domain
         "https://manhwa-backend-h7g66jyc2q-el.a.run.app",
         # "https://manhwa-backend-h7g66jyc2q-el.a.run.app",
+        "*"
     ],
     allow_credentials=True,
     allow_methods=["*"],
+    expose_headers=["*"],
     allow_headers=["*"],
 )
 

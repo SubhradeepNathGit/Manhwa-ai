@@ -121,7 +121,6 @@ def generate_narration_audio(text: str) -> tuple[str, float]:
         # Fallback for local development (saves to your project folder)
         TTS_CACHE_DIR = os.path.join(os.getcwd(), "tts_cache")
     
-    os.makedirs(TTS_CACHE_DIR, exist_ok=True)
     final_path = os.path.join(TTS_CACHE_DIR, f"{text_hash}.mp3")
 
 

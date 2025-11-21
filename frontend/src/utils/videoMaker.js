@@ -1,14 +1,12 @@
-// frontend/src/utils/videoMaker.js
+// frontend/src/utils/videoMaker.js (CORRECTED - Fixed aspect ratio & smart scrolling)
 /**
  * ⚡ BROWSER-BASED VIDEO GENERATION using FFmpeg.wasm
  * 
- * Features:
- * - Zoom/Pan animations
- * - Audio merging
- * - HD video output
- * - All processing happens in browser (FREE!)
- * 
- * No backend video rendering needed!
+ * FEATURES:
+ * - 60% content area (20% black bars on sides)
+ * - Smart animation: Tall images scroll, short images zoom
+ * - Proper panel sizing and centering
+ * - HD vertical video output (1080x1920)
  */
 
 import { FFmpeg } from '@ffmpeg/ffmpeg';
@@ -20,9 +18,6 @@ import { fetchFile, toBlobURL } from '@ffmpeg/util';
 let ffmpegInstance = null;
 let isFFmpegLoaded = false;
 
-/**
- * Load FFmpeg.wasm (only once)
- */
 export async function loadFFmpeg(onProgress) {
   if (isFFmpegLoaded && ffmpegInstance) {
     return ffmpegInstance;
@@ -30,43 +25,41 @@ export async function loadFFmpeg(onProgress) {
 
   try {
     console.log('🎬 Loading FFmpeg.wasm...');
-    
+
     const ffmpeg = new FFmpeg();
-    
-    // Progress callback
+
     ffmpeg.on('log', ({ message }) => {
       console.log('[FFmpeg]', message);
     });
-    
-    ffmpeg.on('progress', ({ progress, time }) => {
+
+    ffmpeg.on('progress', ({ progress }) => {
       if (onProgress) {
         onProgress(Math.round(progress * 100));
       }
     });
 
-    // Load FFmpeg core
     const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
-    
+
     await ffmpeg.load({
       coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
       wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
     });
 
-    console.log('✅ FFmpeg.wasm loaded successfully');
-    
+    console.log('✅ FFmpeg.wasm loaded');
+
     ffmpegInstance = ffmpeg;
     isFFmpegLoaded = true;
-    
+
     return ffmpeg;
-    
+
   } catch (error) {
     console.error('❌ Failed to load FFmpeg:', error);
-    throw new Error('Failed to load video processor. Please refresh the page.');
+    throw new Error('Failed to load video processor');
   }
 }
 
 // =====================================================================
-// Download Image Helper
+// Download Helper
 // =====================================================================
 async function downloadImage(url, filename) {
   try {
@@ -80,41 +73,99 @@ async function downloadImage(url, filename) {
 }
 
 // =====================================================================
-// Generate Animation Filter for FFmpeg
+// Smart Animation Filter (CORRECTED)
 // =====================================================================
-function getAnimationFilter(animationType, duration, width = 1080, height = 1920) {
+function getAnimationFilter(
+  animationType,
+  duration,
+  imageWidth,
+  imageHeight,
+  canvasWidth = 1080,
+  canvasHeight = 1920
+) {
   const fps = 30;
   const totalFrames = Math.floor(duration * fps);
-  
-  switch (animationType) {
-    case 'zoom_in':
-      // Gentle zoom in effect
-      return `scale=2*${width}:2*${height},zoompan=z='min(zoom+0.0015,1.5)':d=${totalFrames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${width}x${height}:fps=${fps}`;
-    
-    case 'zoom_out':
-      // Gentle zoom out effect
-      return `scale=2*${width}:2*${height},zoompan=z='if(lte(zoom,1.0),1.5,max(1.001,zoom-0.0015))':d=${totalFrames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${width}x${height}:fps=${fps}`;
-    
-    case 'pan_right':
-      // Pan from left to right
-      return `scale=2*${width}:2*${height},zoompan=z=1.5:d=${totalFrames}:x='iw/2-(iw/zoom/2)+((iw-iw/zoom)/${totalFrames})*on':y='ih/2-(ih/zoom/2)':s=${width}x${height}:fps=${fps}`;
-    
-    case 'pan_down':
-      // Pan from top to bottom (manga scroll)
-      return `scale=${width}:(ih*${width}/iw),zoompan=z=1.0:d=${totalFrames}:x='iw/2-(iw/zoom/2)':y='0+((ih-${height})/${totalFrames})*on':s=${width}x${height}:fps=${fps}`;
-    
-    case 'static':
-      // No animation, just center crop
-      return `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}`;
-    
-    default:
-      // Default: subtle zoom + pan (Ken Burns effect)
-      return `scale=1.3*${width}:1.3*${height},zoompan=z='min(zoom+0.001,1.3)':d=${totalFrames}:x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=${width}x${height}:fps=${fps}`;
+
+  // ⚡ Content area = 60% of canvas width
+  const contentWidth = Math.floor(canvasWidth * 0.6);   // 648px
+  const leftPadding = Math.floor(canvasWidth * 0.2);    // 216px (black bar)
+
+  // Calculate aspect ratios
+  const imageAspect = imageHeight / imageWidth;
+  const contentAspect = canvasHeight / contentWidth;
+
+  console.log(`Image: ${imageWidth}x${imageHeight}, Aspect: ${imageAspect.toFixed(2)}`);
+  console.log(`Content: ${contentWidth}x${canvasHeight}, Aspect: ${contentAspect.toFixed(2)}`);
+
+  // =====================================================================
+  // DECISION LOGIC
+  // =====================================================================
+
+  // TALL IMAGES → Pan down (scroll top to bottom)
+  if (imageAspect > contentAspect * 1.3) {
+    console.log('→ Using PAN DOWN (scroll) effect');
+
+    // Scale image to fit WIDTH of content area
+    const scaledWidth = contentWidth;
+    const scaledHeight = Math.floor((imageHeight / imageWidth) * contentWidth);
+
+    // How much to pan (difference between scaled height and canvas height)
+    const panDistance = scaledHeight - canvasHeight;
+
+    if (panDistance > 0) {
+      // Scroll from top to bottom
+      return `scale=${scaledWidth}:${scaledHeight},` +
+        `pad=${canvasWidth}:${scaledHeight}:${leftPadding}:0:black,` +
+        `crop=${canvasWidth}:${canvasHeight}:0:'(ih-oh)*t/${duration}':exact=1`;
+    } else {
+      // Image not tall enough to scroll, just center it
+      return `scale=${scaledWidth}:${scaledHeight},` +
+        `pad=${canvasWidth}:${canvasHeight}:${leftPadding}:(oh-ih)/2:black`;
+    }
+  }
+
+  // SHORT IMAGES → Zoom effect
+  else if (imageAspect < contentAspect * 0.7) {
+    console.log('→ Using ZOOM effect');
+
+    // Scale to fit HEIGHT of canvas
+    const scaledHeight = canvasHeight;
+    const scaledWidth = Math.floor((imageWidth / imageHeight) * canvasHeight);
+
+    // Ensure it fits in content area
+    const finalWidth = Math.min(scaledWidth, contentWidth);
+    const finalHeight = Math.floor((imageHeight / imageWidth) * finalWidth);
+
+    // Gentle zoom in
+    return `scale=${Math.floor(finalWidth * 1.15)}:${Math.floor(finalHeight * 1.15)},` +
+      `zoompan=z='min(zoom+0.0008,1.1)':d=${totalFrames}:` +
+      `x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':` +
+      `s=${finalWidth}x${finalHeight}:fps=${fps},` +
+      `pad=${canvasWidth}:${canvasHeight}:${leftPadding + (contentWidth - finalWidth) / 2}:(oh-ih)/2:black`;
+  }
+
+  // NORMAL IMAGES → Static with subtle zoom
+  else {
+    console.log('→ Using STATIC with subtle zoom');
+
+    // Scale to fit content area perfectly
+    const scaledHeight = canvasHeight;
+    const scaledWidth = Math.floor((imageWidth / imageHeight) * canvasHeight);
+
+    const finalWidth = Math.min(scaledWidth, contentWidth);
+    const finalHeight = Math.floor((imageHeight / imageWidth) * finalWidth);
+
+    // Very subtle zoom
+    return `scale=${finalWidth}:${finalHeight},` +
+      `zoompan=z='1.0+0.0003*on':d=${totalFrames}:` +
+      `x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':` +
+      `s=${finalWidth}x${finalHeight}:fps=${fps},` +
+      `pad=${canvasWidth}:${canvasHeight}:${leftPadding + (contentWidth - finalWidth) / 2}:(oh-ih)/2:black`;
   }
 }
 
 // =====================================================================
-// MAIN FUNCTION: Generate Video from Scenes
+// MAIN FUNCTION
 // =====================================================================
 export async function generateVideoFromScenes({
   imageUrls,
@@ -130,21 +181,17 @@ export async function generateVideoFromScenes({
 
   try {
     log('🎬 Starting video generation...');
-    
-    // Load FFmpeg
+
     const ffmpeg = await loadFFmpeg(onProgress);
 
     log('📥 Downloading images and audio...');
-    
-    // Download all images
-    const imageDownloads = imageUrls.map((url, idx) => 
+
+    const imageDownloads = imageUrls.map((url, idx) =>
       downloadImage(url, `image_${idx}.jpg`)
     );
-    
-    // Download audio
+
     const audioDownload = fetch(audioUrl).then(r => r.arrayBuffer());
-    
-    // Wait for all downloads
+
     const [imageBuffers, audioBuffer] = await Promise.all([
       Promise.all(imageDownloads),
       audioDownload,
@@ -152,38 +199,61 @@ export async function generateVideoFromScenes({
 
     log(`✅ Downloaded ${imageBuffers.length} images and audio`);
 
-    // Write images to FFmpeg virtual file system
+    // Write to FFmpeg FS
     for (let i = 0; i < imageBuffers.length; i++) {
       await ffmpeg.writeFile(`image_${i}.jpg`, new Uint8Array(imageBuffers[i]));
     }
-    
-    // Write audio
+
     await ffmpeg.writeFile('audio.mp3', new Uint8Array(audioBuffer));
 
     log('✅ Files loaded into FFmpeg');
 
     // =====================================================================
-    // Generate individual video clips for each scene
+    // Generate clips with smart sizing
     // =====================================================================
-    log('🎨 Generating animated clips...');
-    
+    log('🎨 Generating clips with 60% content area...');
+
     const videoClips = [];
-    
+
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
       const imageIndex = scene.image_page_index || i;
       const duration = scene.duration || 3.0;
-      const animationType = scene.animation_type || 'zoom_pan';
-      
-      // Get animation filter
-      const filter = getAnimationFilter(animationType, duration);
-      
+
       const inputFile = `image_${Math.min(imageIndex, imageUrls.length - 1)}.jpg`;
       const outputFile = `clip_${i}.mp4`;
-      
-      log(`  - Clip ${i + 1}/${scenes.length}: ${animationType} (${duration}s)`);
-      
-      // Generate clip with animation
+
+      log(`  - Clip ${i + 1}/${scenes.length}: Detecting dimensions...`);
+
+      // ⚡ Detect image dimensions
+      await ffmpeg.exec([
+        '-i', inputFile,
+        '-vframes', '1',
+        '-f', 'image2',
+        `temp_${i}.jpg`
+      ]);
+
+      const tempData = await ffmpeg.readFile(`temp_${i}.jpg`);
+      const tempBlob = new Blob([tempData.buffer]);
+      const tempImg = await createImageBitmap(tempBlob);
+
+      const imageWidth = tempImg.width;
+      const imageHeight = tempImg.height;
+
+      tempImg.close();
+      await ffmpeg.deleteFile(`temp_${i}.jpg`);
+
+      // Get smart filter
+      const filter = getAnimationFilter(
+        scene.animation_type,
+        duration,
+        imageWidth,
+        imageHeight,
+        1080,
+        1920
+      );
+
+      // Generate clip
       await ffmpeg.exec([
         '-loop', '1',
         '-i', inputFile,
@@ -191,26 +261,24 @@ export async function generateVideoFromScenes({
         '-t', duration.toString(),
         '-c:v', 'libx264',
         '-preset', 'ultrafast',
-        '-crf', '28',
+        '-crf', '23',
         '-pix_fmt', 'yuv420p',
         outputFile,
       ]);
-      
+
       videoClips.push(outputFile);
     }
 
     log('✅ All clips generated');
 
     // =====================================================================
-    // Concatenate all clips
+    // Concatenate clips
     // =====================================================================
     log('🔗 Merging clips...');
-    
-    // Create concat file
+
     const concatContent = videoClips.map(clip => `file '${clip}'`).join('\n');
     await ffmpeg.writeFile('concat.txt', concatContent);
-    
-    // Concatenate videos
+
     await ffmpeg.exec([
       '-f', 'concat',
       '-safe', '0',
@@ -222,10 +290,10 @@ export async function generateVideoFromScenes({
     log('✅ Clips merged');
 
     // =====================================================================
-    // Add audio to video
+    // Add audio
     // =====================================================================
     log('🎵 Adding audio...');
-    
+
     await ffmpeg.exec([
       '-i', 'video_no_audio.mp4',
       '-i', 'audio.mp3',
@@ -237,25 +305,22 @@ export async function generateVideoFromScenes({
 
     log('✅ Audio merged');
 
-    // =====================================================================
     // Read final video
-    // =====================================================================
     const data = await ffmpeg.readFile('final_video.mp4');
     const blob = new Blob([data.buffer], { type: 'video/mp4' });
     const videoUrl = URL.createObjectURL(blob);
 
     log('✅ Video generation complete!');
 
-    // Cleanup FFmpeg file system
+    // Cleanup
     try {
-      // Delete temporary files
       for (const clip of videoClips) {
         await ffmpeg.deleteFile(clip);
       }
       await ffmpeg.deleteFile('concat.txt');
       await ffmpeg.deleteFile('video_no_audio.mp4');
       await ffmpeg.deleteFile('final_video.mp4');
-      
+
       for (let i = 0; i < imageBuffers.length; i++) {
         await ffmpeg.deleteFile(`image_${i}.jpg`);
       }
@@ -277,7 +342,7 @@ export async function generateVideoFromScenes({
 }
 
 // =====================================================================
-// Helper: Download Video
+// Download Helper
 // =====================================================================
 export function downloadVideo(blob, filename = 'manhwa_video.mp4') {
   const url = URL.createObjectURL(blob);
@@ -288,29 +353,4 @@ export function downloadVideo(blob, filename = 'manhwa_video.mp4') {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
-}
-
-// =====================================================================
-// Helper: Upload to Supabase (Optional)
-// =====================================================================
-export async function uploadVideoToSupabase(blob, filename, supabaseClient) {
-  try {
-    const { data, error } = await supabaseClient.storage
-      .from('Manhwa_ai')
-      .upload(`videos/${filename}`, blob, {
-        contentType: 'video/mp4',
-        upsert: true,
-      });
-
-    if (error) throw error;
-
-    const { data: urlData } = supabaseClient.storage
-      .from('Manhwa_ai')
-      .getPublicUrl(`videos/${filename}`);
-
-    return urlData.publicUrl;
-  } catch (error) {
-    console.error('Upload to Supabase failed:', error);
-    throw error;
-  }
 }

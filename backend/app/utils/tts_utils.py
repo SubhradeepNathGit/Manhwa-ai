@@ -28,9 +28,7 @@ from app.config import TTS_CACHE_DIR
 def _assert_ffmpeg_exists():
     if not shutil.which("ffmpeg"):
         raise EnvironmentError(
-            "❌ FFmpeg not found!\n"
-            "Install FFmpeg (Windows build): https://www.gyan.dev/ffmpeg/builds/\n"
-            "Then add to PATH."
+            "❌ FFmpeg not found!"
         )
 
 
@@ -117,7 +115,15 @@ def generate_narration_audio(text: str) -> tuple[str, float]:
 
     # Cache key
     text_hash = hashlib.md5(clean_text.encode()).hexdigest()
+    if os.path.exists("/tmp"):
+        TTS_CACHE_DIR = "/tmp/tts_cache"
+    else:
+        # Fallback for local development (saves to your project folder)
+        TTS_CACHE_DIR = os.path.join(os.getcwd(), "tts_cache")
+    
+    os.makedirs(TTS_CACHE_DIR, exist_ok=True)
     final_path = os.path.join(TTS_CACHE_DIR, f"{text_hash}.mp3")
+
 
     # ------------------------------------------------------------
     # STEP 1 — Return valid cached audio

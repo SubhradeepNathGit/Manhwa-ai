@@ -7,6 +7,7 @@ FROM python:3.11-slim
 # 2. Install system dependencies (SIMPLIFIED - No FFmpeg!)
 # =============================
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    ffmpeg \
     tesseract-ocr \
     poppler-utils \
     libsm6 \
@@ -16,7 +17,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# ❌ REMOVED: ffmpeg (no longer needed!)
+
 
 # ============================
 # 3. Set work directory

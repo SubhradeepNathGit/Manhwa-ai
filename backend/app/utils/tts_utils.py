@@ -133,7 +133,7 @@ def generate_narration_audio(text: str) -> tuple[str, float]:
             print(f"✔ Cached narration ({dur}s)")
             return final_path, dur
         else:
-            print("⚠ Cached file corrupted → regenerating...")
+            print(" Cached file corrupted → regenerating...")
             try:
                 os.remove(final_path)
             except:

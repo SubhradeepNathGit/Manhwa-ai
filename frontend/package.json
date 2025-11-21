@@ -8,7 +8,7 @@
     "build": "vite build",
     "lint": "eslint . --ext js,jsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
-    "dev:backend": "cd ../backend && .venv\\Scripts\\activate && uvicorn app.main:app --reload --port 8080",
+    "dev:backend": "cd ../backend && set \"PYTHONUTF8=1\" && .venv\\Scripts\\activate && uvicorn app.main:app --reload --port 8080",
     "start": "concurrently -n \"FRONTEND,BACKEND\" -c \"green,blue\" \"npm run dev\" \"npm run dev:backend\""
   },
   "dependencies": {

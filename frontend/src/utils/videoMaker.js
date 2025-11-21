@@ -226,22 +226,45 @@ export async function generateVideoFromScenes({
       log(`  - Clip ${i + 1}/${scenes.length}: Detecting dimensions...`);
 
       // ⚡ Detect image dimensions
-      await ffmpeg.exec([
-        '-i', inputFile,
-        '-vframes', '1',
-        '-f', 'image2',
-        `temp_${i}.jpg`
-      ]);
+      let imageWidth = 1080;  // Default fallback
+      let imageHeight = 1920;
 
-      const tempData = await ffmpeg.readFile(`temp_${i}.jpg`);
-      const tempBlob = new Blob([tempData.buffer]);
-      const tempImg = await createImageBitmap(tempBlob);
+      try {
+        // Try to get dimensions via FFmpeg probe
+        const probeOutput = await ffmpeg.exec([
+          '-i', inputFile,
+          '-vcodec', 'copy',
+          '-f', 'null',
+          '-'
+        ]);
 
-      const imageWidth = tempImg.width;
-      const imageHeight = tempImg.height;
+        // Parse dimensions from logs (FFmpeg outputs to stderr)
+        // This is more reliable than createImageBitmap
 
-      tempImg.close();
-      await ffmpeg.deleteFile(`temp_${i}.jpg`);
+        // For simplicity, use Image() API instead
+        const tempData = await ffmpeg.readFile(inputFile);
+        const tempBlob = new Blob([tempData.buffer], { type: 'image/jpeg' });
+        const tempUrl = URL.createObjectURL(tempBlob);
+
+        // Use Image API (more reliable)
+        const img = new Image();
+        await new Promise((resolve, reject) => {
+          img.onload = resolve;
+          img.onerror = reject;
+          img.src = tempUrl;
+        });
+
+        imageWidth = img.width;
+        imageHeight = img.height;
+
+        URL.revokeObjectURL(tempUrl);
+
+      } catch (err) {
+        console.warn(`⚠ Could not detect dimensions for clip ${i}, using defaults:`, err);
+        // Use defaults (1080x1920)
+      }
+
+      log(`    Image size: ${imageWidth}x${imageHeight}`);
 
       // Get smart filter
       const filter = getAnimationFilter(

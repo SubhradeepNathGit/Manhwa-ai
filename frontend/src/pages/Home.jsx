@@ -25,10 +25,10 @@ import {
 import { generateAudioStory } from '../api/api';
 
 // Video generation utility
-import { 
-  generateVideoFromScenes, 
+import {
+  generateVideoFromScenes,
   downloadVideo,
-  loadFFmpeg 
+  loadFFmpeg
 } from '../utils/videoMaker';
 
 const Home = () => {
@@ -242,13 +242,12 @@ const Home = () => {
               e.preventDefault();
               setIsDragging(false);
             }}
-            className={`relative border-2 border-dashed rounded-2xl p-8 transition-all duration-300 ${
-              isDragging
+            className={`relative border-2 border-dashed rounded-2xl p-8 transition-all duration-300 ${isDragging
                 ? "border-pink-500 bg-pink-500/10"
                 : file
-                ? "border-green-500 bg-green-500/10"
-                : "border-gray-600 bg-gray-900/40"
-            } hover:border-purple-500 cursor-pointer`}
+                  ? "border-green-500 bg-green-500/10"
+                  : "border-gray-600 bg-gray-900/40"
+              } hover:border-purple-500 cursor-pointer`}
           >
             <input
               ref={fileInputRef}
@@ -336,13 +335,12 @@ const Home = () => {
             ].map((opt) => (
               <label
                 key={opt.value}
-                className={`block p-3 rounded-xl border ${
-                  opt.disabled
+                className={`block p-3 rounded-xl border ${opt.disabled
                     ? "opacity-60 cursor-not-allowed"
                     : mode === opt.value
-                    ? "border-purple-500 bg-purple-500/20"
-                    : "border-gray-700 bg-gray-800/40 hover:bg-gray-700/40"
-                }`}
+                      ? "border-purple-500 bg-purple-500/20"
+                      : "border-gray-700 bg-gray-800/40 hover:bg-gray-700/40"
+                  }`}
               >
                 <div className="flex items-center gap-3">
                   <input
@@ -370,11 +368,10 @@ const Home = () => {
         <button
           onClick={handleGenerateStory}
           disabled={isProcessing || !file}
-          className={`px-8 py-4 rounded-full font-bold text-lg transition-all flex items-center gap-3 ${
-            isProcessing || !file
+          className={`px-8 py-4 rounded-full font-bold text-lg transition-all flex items-center gap-3 ${isProcessing || !file
               ? "bg-gray-700 text-gray-400 cursor-not-allowed"
               : "bg-gradient-to-r from-pink-500 via-purple-500 to-indigo-500 hover:scale-105"
-          }`}
+            }`}
         >
           {isProcessing ? (
             <>
@@ -393,11 +390,10 @@ const Home = () => {
         <button
           onClick={handleGenerateVideo}
           disabled={!storyData || isGeneratingVideo}
-          className={`px-8 py-4 rounded-full font-bold text-lg transition-all flex items-center gap-3 ${
-            !storyData || isGeneratingVideo
+          className={`px-8 py-4 rounded-full font-bold text-lg transition-all flex items-center gap-3 ${!storyData || isGeneratingVideo
               ? "bg-gray-700 text-gray-400 cursor-not-allowed"
               : "bg-gradient-to-r from-green-500 to-emerald-600 hover:scale-105"
-          }`}
+            }`}
         >
           {isGeneratingVideo ? (
             <>

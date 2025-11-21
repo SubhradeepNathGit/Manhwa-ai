@@ -2,7 +2,7 @@
 // API CONFIG
 // ---------------------------------------------------------
 
-const API_URL = import.meta.env.VITE_API_BASE_URL; 
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 async function parseJSONResponse(response) {
   try {
@@ -57,6 +57,7 @@ export const generateAudioStory = async (formData) => {
     full_narration: data.full_narration || "",
     processing_time: data.processing_time || 0,
     total_duration: data.total_duration || 0,
+    total_panels: data.total_panels || 0,
   };
 };
 

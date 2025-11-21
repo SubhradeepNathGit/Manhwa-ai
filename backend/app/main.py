@@ -36,6 +36,7 @@ app.add_middleware(
    allow_origins=[
         "http://localhost:5173",
         "http://127.0.0.1:5173",
+        "http://localhost:8080"
 
         # Your real Vercel domains:
         "https://manhwa-a1wv8f96g-anurag-bitans-projects.vercel.app",
@@ -91,13 +92,11 @@ async def add_timing(request: Request, call_next):
 # -----------------------------------------------------
 from app.routers import status
 from app.routers import generate_audio_story
-from app.routers import generate_video
 
 API_PREFIX = "/api/v1"
 
 app.include_router(status.router, prefix=API_PREFIX, tags=["System Status"])
 app.include_router(generate_audio_story.router, prefix=API_PREFIX, tags=["Audio & Script"])
-app.include_router(generate_video.router, prefix=API_PREFIX, tags=["Video Generation"])
 
 
 # -----------------------------------------------------

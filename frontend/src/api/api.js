@@ -2,7 +2,7 @@
 // API CONFIG
 // ---------------------------------------------------------
 
-const API_URL = import.meta.env.VITE_API_BASE_URL; // example: https://manhwa-backend-xxx.a.run.app
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 async function parseJSONResponse(response) {
   try {
@@ -24,14 +24,14 @@ async function fetchWithRetry(url, options, retries = 1) {
 
 
 
-// Normalize backend response (image_urls / panel_images)
-function normalizeStoryData(data) {
-  const imageList = data.image_urls || data.panel_images || [];
-  return {
-    ...data,
-    image_urls: Array.isArray(imageList) ? imageList : [],
-  };
-}
+// // Normalize backend response (image_urls / panel_images)
+// function normalizeStoryData(data) {
+//   const imageList = data.image_urls || data.panel_images || [];
+//   return {
+//     ...data,
+//     image_urls: Array.isArray(imageList) ? imageList : [],
+//   };
+// }
 
 // ---------------------------------------------------------
 // 1. Generate Audio Story  (POST /api/v1/generate_audio_story)
@@ -49,72 +49,16 @@ export const generateAudioStory = async (formData) => {
   if (!response.ok) throw await parseJSONResponse(response);
 
   const data = await parseJSONResponse(response);
-  return normalizeStoryData(data);
-};
-
-// ---------------------------------------------------------
-// 2. Generate Video  (POST /api/v1/generate_video)
-// ---------------------------------------------------------
-
-export const generateVideo = async (storyData) => {
-  const response = await fetchWithRetry(`${API_URL}/api/v1/generate_video`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(storyData),
-  });
-
-  if (!response.ok) throw await parseJSONResponse(response);
-
-  return await parseJSONResponse(response);
-};
-
-// ---------------------------------------------------------
-// 3. Poll Video Status  (GET /api/v1/video_status/{jobId})
-// ---------------------------------------------------------
-
-export const getVideoStatus = async (jobId) => {
-  if (!jobId) throw new Error("Job ID missing");
-
-  const response = await fetchWithRetry(
-    `${API_URL}/api/v1/video_status/${jobId}`,
-    { method: "GET" }
-  );
-
-  if (!response.ok) throw await parseJSONResponse(response);
-
-  return await parseJSONResponse(response);
-};
-
-// Add new streaming function
-export const streamPanelExtraction = (jobId, onPanel, onComplete, onError) => {
-  const eventSource = new EventSource(
-    `${API_URL}/api/v1/stream_panels/${jobId}`
-  );
-
-  eventSource.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      
-      if (data.type === 'panel') {
-        onPanel(data);  // Called for each panel
-      } else if (data.type === 'complete') {
-        onComplete(data);
-        eventSource.close();
-      } else if (data.type === 'error') {
-        onError(data.message);
-        eventSource.close();
-      }
-    } catch (err) {
-      console.error('Stream parse error:', err);
-    }
+  return {
+    manga_name: data.manga_name,
+    image_urls: data.image_urls || [],
+    audio_url: data.audio_url,
+    final_video_segments: data.final_video_segments || [],
+    full_narration: data.full_narration || "",
+    processing_time: data.processing_time || 0,
+    total_duration: data.total_duration || 0,
+    total_panels: data.total_panels || 0,
   };
-
-  eventSource.onerror = (err) => {
-    console.error('EventSource error:', err);
-    onError('Stream connection failed');
-    eventSource.close();
-  };
-
-  // Return function to close stream manually
-  return () => eventSource.close();
 };
+
+

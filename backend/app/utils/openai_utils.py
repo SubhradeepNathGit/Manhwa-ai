@@ -137,6 +137,11 @@ RULES:
 6. Script engaging ho → jaise dost ko story suna rahe ho
 7. Sirf VALID JSON return karna (no text, no markdown)
 
+**STRICT STYLE GUIDELINES (Based on "Manhwa Onfire" style):**
+
+
+
+
 OUTPUT JSON FORMAT:
 {{
   "full_narration": "string",

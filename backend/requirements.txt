@@ -1,22 +1,29 @@
-pydub
-supabase
-uvicorn
+# Core
 fastapi[all]
 uvicorn[standard]
 python-dotenv
-requests
-opencv-python
-pdf2image
-gtts
-tesseract
-openai
 python-multipart
-moviepy==1.0.3
-slowapi
-anyio
+
+# PDF & Image Processing
+pdf2image
+opencv-python
+Pillow
+numpy
+
+# OCR
+pytesseract
+
+# AI/LLM
+google-generativeai
+
+# TTS
+gtts
+pydub
+
+# Storage
 supabase
 httpx
-pytesseract
-numpy
-poppler-utils
-google-generativeai
+
+# Utilities
+requests
+anyio

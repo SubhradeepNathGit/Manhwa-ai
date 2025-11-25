@@ -1,17 +1,7 @@
-# backend/app/routers/generate_audio_story.py
+# backend/app/routers/generate_audio_story.py (SIMPLIFIED)
 """
-⚡ OPTIMIZED VERSION with Server-Sent Events (SSE) Streaming
-
-FEATURES:
-✅ Stream panels as they're extracted (real-time frontend display)
-✅ Parallel OCR + Upload (saves 30-40 seconds)
-✅ Optimized JPEG quality (saves 10-15 seconds)
-✅ No duplicate uploads (saves 15-20 seconds)
-✅ All existing features preserved
-
-ENDPOINTS:
-1. POST /generate_audio_story - Main processing (kept for compatibility)
-2. GET /stream_panels/{job_id} - NEW: Real-time panel streaming
+⚡ OPTIMIZED: Only generates audio story data
+Frontend handles video generation using ffmpeg.wasm
 """
 
 import asyncio
@@ -19,13 +9,11 @@ import io
 import os
 import tempfile
 import traceback
-import uuid
-import json
-import time
 from typing import List, Tuple
+import time
 
 from fastapi import APIRouter, Form, UploadFile, File, HTTPException
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 from pydub import AudioSegment
 
@@ -46,18 +34,12 @@ from ..utils.openai_utils import generate_cinematic_script
 
 router = APIRouter()
 
-# Status directory for job temp files
-STATUS_DIR = os.path.join(os.getcwd(), "job_status")
-os.makedirs(STATUS_DIR, exist_ok=True)
-
 
 # ------------------------------------------------------
-# Convert PIL Images → list[bytes] (jpeg) - OPTIMIZED
+# Convert PIL Images → list[bytes] (jpeg)
 # ------------------------------------------------------
 def pil_images_to_bytes(images: List) -> List[bytes]:
-    """
-    ⚡ OPTIMIZED: Quality reduced from 90 → 75
-    """
+    """Convert PIL images to JPEG bytes with optimization"""
     out = []
     for img in images:
         buf = io.BytesIO()
@@ -67,157 +49,26 @@ def pil_images_to_bytes(images: List) -> List[bytes]:
 
 
 # ------------------------------------------------------
-# ⚡ HELPER: Process OCR + Upload in Parallel
+# Helper: Process OCR + Upload in Parallel
 # ------------------------------------------------------
 async def process_panel_parallel(
     img_bytes: bytes,
     idx: int,
     manga_folder: str
 ) -> Tuple[str, str]:
-    """
-    Process ONE panel: Upload + OCR at the SAME TIME!
-    
-    Returns:
-        (image_url, ocr_text)
-    """
+    """Process ONE panel: Upload + OCR at the SAME TIME!"""
     upload_path = f"{manga_folder}/images/page_{idx:02d}.jpg"
     
-    # ⚡ Run BOTH tasks in parallel
     upload_task = run_in_threadpool(supabase_upload, img_bytes, upload_path, "image/jpeg")
     ocr_task = run_in_threadpool(ocr_image_bytes, img_bytes)
     
-    # Wait for BOTH to complete
     image_url, ocr_text = await asyncio.gather(upload_task, ocr_task)
     
     return image_url, ocr_text
 
 
 # =====================================================================
-# ⚡ NEW ENDPOINT: Stream Panel Extraction (Real-Time)
-# =====================================================================
-@router.get("/stream_panels/{job_id}")
-async def stream_panel_extraction(job_id: str):
-    """
-    ⚡ NEW: Server-Sent Events stream for real-time panel display
-    
-    SSE Event Format:
-    - data: {"type": "panel", "index": 0, "url": "https://...", "progress": "1"}
-    - data: {"type": "complete", "total": 10, "image_urls": [...]}
-    - data: {"type": "error", "message": "..."}
-    
-    Frontend Usage:
-    const eventSource = new EventSource('/api/v1/stream_panels/job123');
-    eventSource.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === 'panel') {
-            showPanel(data.url);  // Display immediately!
-        }
-    };
-    """
-    
-    async def generate_stream():
-        temp_pdf_path = None
-        
-        try:
-            # Get PDF from temp storage
-            job_file = os.path.join(STATUS_DIR, f"{job_id}_pdf.tmp")
-            
-            if not os.path.exists(job_file):
-                yield f"data: {json.dumps({'type': 'error', 'message': 'Job not found'})}\n\n"
-                return
-            
-            # Load PDF data
-            with open(job_file, 'rb') as f:
-                pdf_data = f.read()
-            
-            # Save to temp file for extraction
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
-                tmp.write(pdf_data)
-                temp_pdf_path = tmp.name
-            
-            manga_folder = job_id
-            
-            print(f"✔ Starting streaming extraction for job {job_id}")
-            
-            # Extract images (use existing function)
-            images = await run_in_threadpool(extract_pdf_images_high_quality, temp_pdf_path)
-            
-            if not images:
-                yield f"data: {json.dumps({'type': 'error', 'message': 'No panels extracted'})}\n\n"
-                return
-            
-            image_bytes_list = pil_images_to_bytes(images)
-            total_panels = len(image_bytes_list)
-            image_urls = []
-            
-            print(f"✔ Extracted {total_panels} panels, starting upload stream...")
-            
-            # ⚡ Stream each panel as it uploads
-            for idx, img_bytes in enumerate(image_bytes_list):
-                try:
-                    # Upload this panel
-                    upload_path = f"{manga_folder}/images/page_{idx:02d}.jpg"
-                    image_url = await run_in_threadpool(
-                        supabase_upload, 
-                        img_bytes, 
-                        upload_path, 
-                        "image/jpeg"
-                    )
-                    
-                    image_urls.append(image_url)
-                    
-                    # ⚡ Stream this panel to frontend immediately!
-                    event = {
-                        "type": "panel",
-                        "index": idx,
-                        "url": image_url,
-                        "progress": f"{idx + 1}/{total_panels}"
-                    }
-                    yield f"data: {json.dumps(event)}\n\n"
-                    
-                    # Small delay to prevent overwhelming
-                    await asyncio.sleep(0.05)
-                    
-                except Exception as e:
-                    print(f"⚠ Panel {idx} upload failed: {e}")
-                    continue
-            
-            # Send completion with all URLs
-            completion_event = {
-                "type": "complete",
-                "total": total_panels,
-                "image_urls": image_urls
-            }
-            yield f"data: {json.dumps(completion_event)}\n\n"
-            
-            print(f"✔ Streaming complete for job {job_id}")
-            
-        except Exception as e:
-            print(f"❌ Streaming error: {e}")
-            traceback.print_exc()
-            yield f"data: {json.dumps({'type': 'error', 'message': str(e)})}\n\n"
-        
-        finally:
-            # Cleanup
-            if temp_pdf_path and os.path.exists(temp_pdf_path):
-                try:
-                    os.remove(temp_pdf_path)
-                except:
-                    pass
-    
-    return StreamingResponse(
-        generate_stream(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no"
-        }
-    )
-
-
-# =====================================================================
-# MAIN ENDPOINT: Generate Audio Story (OPTIMIZED)
+# MAIN ENDPOINT: Generate Audio Story (OPTIMIZED FOR FRONTEND VIDEO)
 # =====================================================================
 @router.post("/generate_audio_story")
 async def generate_audio_story(
@@ -226,118 +77,99 @@ async def generate_audio_story(
     manga_pdf: UploadFile = File(...)
 ):
     """
-    Main endpoint for manga processing
-    
-    ⚡ OPTIMIZATIONS:
-    - Parallel OCR + Upload (saves 30-40 sec)
-    - No duplicate uploads (saves 15-20 sec)
-    - Lower JPEG quality (saves 10-15 sec)
-    - Supports streaming via job_id
+    ⚡ OPTIMIZED: Returns everything needed for FRONTEND video generation
     
     Returns:
         {
-            "job_id": "uuid",
             "manga_name": "...",
-            "image_urls": [...],
-            "audio_url": "...",
-            "final_video_segments": [...],
-            "stream_available": true
+            "image_urls": [...],        # For frontend video
+            "audio_url": "...",          # For frontend video
+            "final_video_segments": [...], # Animation instructions
+            "full_narration": "...",     # Optional
+            "processing_time": 45.3      # Seconds
         }
     """
     temp_pdf_path = None
     merged_audio_tmp = None
-    job_id = str(uuid.uuid4())
-    
-    # Folder-safe version
-    manga_folder = manga_name.replace(" ", "_").replace("/", "_").lower()
-    MAX_PROCESSING_TIME = 1000  
     start_time = time.time()
+    
+    manga_folder = manga_name.replace(" ", "_").replace("/", "_").lower()
+
     try:
         # ------------------------------------------------------
-        # STEP 1 — Save PDF temporarily + Store for streaming
+        # STEP 1 — Save PDF temporarily
         # ------------------------------------------------------
         pdf_data = await manga_pdf.read()
         
-        # Save for streaming endpoint
-        job_file = os.path.join(STATUS_DIR, f"{job_id}_pdf.tmp")
-        with open(job_file, 'wb') as f:
-            f.write(pdf_data)
-        
-        # Also save for immediate processing
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
             tmp.write(pdf_data)
             temp_pdf_path = tmp.name
 
-        print(f"✔ PDF saved (job: {job_id}), starting extraction")
+        print(f"✔ PDF saved, starting extraction")
 
         # ------------------------------------------------------
-        # STEP 2 — Extract high-quality images
+        # STEP 2 — Extract images (with strict limits!)
         # ------------------------------------------------------
         images = await run_in_threadpool(extract_pdf_images_high_quality, temp_pdf_path)
 
         if not images:
             raise HTTPException(400, "No images extracted from PDF")
         
+        # ⚡ CRITICAL: Prevent too many panels
         if len(images) > 50:
             raise HTTPException(
-                400, 
-                f"Too many panels extracted ({len(images)}). Please upload a cleaner manga PDF with clear panel borders."
+                400,
+                f"Too many panels extracted ({len(images)}). Please use a cleaner manga PDF."
             )
-            
-        print(f"✔ Extracted {len(images)} panels (validated)")
-        
-        if time.time() - start_time > MAX_PROCESSING_TIME:
-            raise HTTPException(408, "Processing timeout - manga too complex")
 
         image_bytes = pil_images_to_bytes(images)
-        print(f"✔ Extracted {len(image_bytes)} images from PDF")
+        print(f"✔ Extracted {len(image_bytes)} panels")
 
         # ------------------------------------------------------
-        # ⚡ STEP 3 — PARALLEL OCR + UPLOAD
+        # STEP 3 — Parallel OCR + Upload
         # ------------------------------------------------------
-        print("✔ Running OCR + Upload in parallel (optimized)...")
+        print("✔ Running parallel OCR + Upload...")
         
-        # Process ALL panels at once (OCR + Upload together)
         parallel_tasks = [
             process_panel_parallel(img_bytes, idx, manga_folder)
             for idx, img_bytes in enumerate(image_bytes)
         ]
         
-        # Wait for all to complete
         results = await asyncio.gather(*parallel_tasks)
         
-        # Separate the results
         image_urls = [url for url, _ in results]
         ocr_results = [text for _, text in results]
         
         extracted_text = "\n\n--- PAGE BREAK ---\n\n".join([t for t in ocr_results if t])
-        print(f"✔ OCR + Upload completed for {len(image_urls)} images")
+        print(f"✔ OCR + Upload completed")
 
         # ------------------------------------------------------
-        # STEP 4 — Generate LLM cinematic scenes
+        # STEP 4 — Generate LLM script
         # ------------------------------------------------------
-        print("✔ Generating narrative script using LLM...")
+        print("✔ Generating narrative script...")
         llm_output = await run_in_threadpool(
             generate_cinematic_script,
             manga_name,
             manga_genre,
             extracted_text,
-            image_bytes,
+            image_bytes[:15],  # ⚡ Limit images sent to LLM
         )
 
         scenes = llm_output.get("scenes", [])
         if not scenes:
             raise HTTPException(500, "LLM returned no scenes")
 
-        # Ensure required keys exist
+        # Ensure required keys
         for i, sc in enumerate(scenes):
-            sc.setdefault("image_page_index", i)
+            sc.setdefault("image_page_index", min(i, len(image_urls) - 1))
             sc.setdefault("narration_segment", "")
+            sc.setdefault("animation_type", "zoom_pan")  # Default animation
+            sc.setdefault("duration", 3.0)  # Default 3 seconds per scene
 
         # ------------------------------------------------------
-        # STEP 5 — Generate narration for each scene
+        # STEP 5 — Generate TTS audio
         # ------------------------------------------------------
-        print("✔ Generating narration audio for scenes...")
+        print("✔ Generating narration audio...")
 
         timeline = 0.0
         merged_audio = AudioSegment.empty()
@@ -353,7 +185,7 @@ async def generate_audio_story(
             try:
                 clip = AudioSegment.from_mp3(audio_path)
             except:
-                print("⚠ Audio damaged — adding silent fallback.")
+                print("⚠ Audio damaged — using silent fallback")
                 clip = AudioSegment.silent(duration=duration * 1000)
 
             merged_audio += clip
@@ -387,19 +219,22 @@ async def generate_audio_story(
             "audio/mpeg"
         )
 
-        print(f"✔ Uploaded master audio to {audio_storage_path}")
+        processing_time = time.time() - start_time
+        print(f"✔ Completed in {processing_time:.2f}s")
 
         # ------------------------------------------------------
-        # RESPONSE (with streaming support)
+        # RESPONSE (Ready for frontend video generation!)
         # ------------------------------------------------------
         return JSONResponse({
-            "job_id": job_id,
             "manga_name": manga_name,
-            "image_urls": image_urls,
-            "audio_url": audio_url,
-            "final_video_segments": final_scenes,
-            "stream_available": True,  # Frontend can use streaming endpoint
-            "stream_url": f"/api/v1/stream_panels/{job_id}"
+            "image_urls": image_urls,           # ⚡ Frontend uses these
+            "audio_url": audio_url,             # ⚡ Frontend merges this
+            "final_video_segments": final_scenes, # ⚡ Animation instructions
+            "full_narration": llm_output.get("full_narration", ""),
+            "processing_time": round(processing_time, 2),
+            "total_panels": len(image_urls),
+            "total_duration": round(timeline, 2),
+            "note": "Video generation happens in frontend using ffmpeg.wasm"
         })
 
     except HTTPException:
@@ -410,30 +245,14 @@ async def generate_audio_story(
         raise HTTPException(500, f"Audio story failed: {str(e)}")
 
     finally:
-        # Cleanup temp PDF
         if temp_pdf_path and os.path.exists(temp_pdf_path):
             try:
                 os.remove(temp_pdf_path)
             except:
                 pass
 
-        # Cleanup temp audio
         if merged_audio_tmp and os.path.exists(merged_audio_tmp):
             try:
                 os.remove(merged_audio_tmp)
             except:
                 pass
-        
-        # Cleanup job file after delay (give streaming time to complete)
-        async def cleanup_job_file():
-            await asyncio.sleep(300)  # 5 minutes
-            job_file = os.path.join(STATUS_DIR, f"{job_id}_pdf.tmp")
-            if os.path.exists(job_file):
-                try:
-                    os.remove(job_file)
-                    print(f"✔ Cleaned up job file: {job_id}")
-                except:
-                    pass
-        
-        # Schedule cleanup (non-blocking)
-        asyncio.create_task(cleanup_job_file())

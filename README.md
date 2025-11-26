@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Manhwa.ai](https://raw.githubusercontent.com/yourusername/yourrepository/main/assets/thumbnail.jpg)](https://raw.githubusercontent.com/yourusername/yourrepository/main/assets/video.mp4)
+[![Manhwa.ai](https://raw.githubusercontent.com/yourusername/yourrepository/main/assets/thumbnail.jpg)]()
 
 [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-Visit_Now-00D9FF?style=for-the-badge)](https://manhwa-ai-theta.vercel.app)
 [![Backend API](https://img.shields.io/badge/🚀_API-Cloud_Run-4285F4?style=for-the-badge)](https://manhwa-backend-h7g66jyc2q-el.a.run.app/docs)

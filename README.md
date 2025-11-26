@@ -80,11 +80,11 @@
 
 ### 📱 Upload Your Manga PDF
 
-<img src="https://via.placeholder.com/800x450/1a1a1a/00D9FF?text=Upload+Interface" width="80%" />
+<img src="https://drive.google.com/uc?export=view&id=1WJ0Xg1B4nR7kV115Y9u5HeBcvT48PCIz" width="80%" />
 
 ### 🎬 Instant Video Preview
 
-<img src="https://via.placeholder.com/800x450/1a1a1a/FF00D9?text=Generated+Video+Preview" width="80%" />
+<img src="https://drive.google.com/uc?export=view&id=1U1WOC7FWxHS3tyXCubKlqWqFWmAPdGr4" width="80%" />
 
 ### ⚡ Lightning-Fast Generation
 

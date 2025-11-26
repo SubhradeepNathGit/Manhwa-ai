@@ -38,7 +38,7 @@ const Landing = () => {
 
       {/* Content - Only visible after video ends */}
       {videoEnded && (
-        <div className="relative z-10 mt-60 px-4 sm:px-6 md:px-8 w-full max-w-4xl mx-auto">
+        <div className="relative z-10 mt-70 px-4 sm:px-6 md:px-8 w-full max-w-4xl mx-auto">
           
 
           {/* CTA Button */}

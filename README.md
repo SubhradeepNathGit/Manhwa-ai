@@ -5,7 +5,7 @@
 ![Manhwa AI Banner](https://via.placeholder.com/1200x400/000000/FFFFFF?text=Manhwa.AI+-+Transform+Manga+into+Cinematic+Videos)
 
 [![Live Demo](https://img.shields.io/badge/🌐_Live_Demo-Visit_Now-00D9FF?style=for-the-badge)](https://manhwa-ai-theta.vercel.app)
-[![Backend API](https://img.shields.io/badge/🚀_API-Cloud_Run-4285F4?style=for-the-badge)]([https://manhwa-backend-h7g66jyc2q-el.a.run.app](https://manhwa-backend-h7g66jyc2q-el.a.run.app/docs))
+[![Backend API](https://img.shields.io/badge/🚀_API-Cloud_Run-4285F4?style=for-the-badge)](https://manhwa-backend-h7g66jyc2q-el.a.run.app)
 [![License](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=for-the-badge)](CONTRIBUTING.md)
 

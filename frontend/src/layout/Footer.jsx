@@ -188,7 +188,7 @@ const Footer = () => {
               © {new Date().getFullYear()} MANHWA AI - All rights reserved.
             </p>
             <p className="font-semibold">
-              Designed & Developed with by{" "}
+              Developed by{" "}
               <a
                 href="https://github.com/SubhradeepNathGit"
                 target="_blank"

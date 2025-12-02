@@ -379,7 +379,7 @@ const UploadPage = () => {
             ) : (
               <div className="flex items-center gap-4 sm:gap-6">
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-500/10 rounded-xl flex items-center justify-center flex-shrink-0 border border-purple-500/20">
-                  <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-purple-400" />
+                  <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-white/70" />
                 </div>
 
                 <div className="flex-1 min-w-0">

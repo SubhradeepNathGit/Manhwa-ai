@@ -19,39 +19,40 @@ const NotFound = () => {
         return prev - 1;
       });
     }, 1000);
+
     return () => clearInterval(timer);
   }, [navigate]);
 
-  // Define transition for minimal animation
-  const transition = { duration: 0.5, ease: "easeOut" };
+  const transition = { duration: 0.6, ease: "easeOut" };
 
   return (
-    // Use black background for minimal, professional look
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="max-w-xl w-full text-center">
-        {/* 404 Title - Large and bold, using primary color */}
+    <section className="min-h-screen bg-black flex items-center justify-center px-4 py-10">
+      <div className="w-full max-w-2xl text-center">
+        {/* 404 Title */}
         <motion.h1
-          initial={{ opacity: 0, scale: 0.8 }}
+          initial={{ opacity: 0, scale: 0.7 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={transition}
-          className="text-[100px] sm:text-[150px] font-extrabold text-purple-600 mb-4"
+          className="text-[90px] sm:text-[140px] md:text-[170px] font-extrabold text-purple-600 leading-none"
         >
           404
         </motion.h1>
 
-        {/* Main Message */}
+        {/* Message Block */}
         <motion.div
-          initial={{ opacity: 0, y: 10 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ ...transition, delay: 0.2 }}
-          className="mb-10"
+          className="mt-4 mb-10 px-2"
         >
-          <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
+          <h2 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3">
             Page Not Found
           </h2>
-          <p className="text-md text-white/70 max-w-lg mx-auto mb-4">
-            We couldn't find the page you were looking for. It might have been moved or deleted.
+
+          <p className="text-base sm:text-lg text-white/70 max-w-xl mx-auto mb-3">
+            The page you are looking for doesn’t exist or may have been moved.
           </p>
+
           <p className="text-sm text-white/50">
             Redirecting to the home page in{" "}
             <span className="text-purple-600 font-semibold">{countdown}</span>{" "}
@@ -59,30 +60,34 @@ const NotFound = () => {
           </p>
         </motion.div>
 
-        {/* Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
-          {/* Primary Action: Go Home (using purple-600) */}
+        {/* Button Group */}
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+          {/* Go Home */}
           <Link
             to="/"
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-purple-600 text-white font-medium text-lg shadow-lg shadow-purple-600/40 transition-all duration-200 hover:bg-purple-700 hover:shadow-purple-600/60 active:translate-y-px"
-            style={{ minWidth: '160px' }}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-full 
+            bg-purple-600 text-white font-medium text-lg shadow-lg shadow-purple-600/40 
+            hover:bg-purple-700  active:translate-y-[1px] transition-all"
+            style={{ minWidth: "160px" }}
           >
             <Home className="w-5 h-5" />
-            Go Home
+            Go to Home
           </Link>
 
-          {/* Secondary Action: Go Back (minimal style) */}
+          {/* Go Back */}
           <button
             onClick={() => navigate(-1)}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-lg bg-black text-white border border-purple-600 font-medium text-lg transition-all duration-200 hover:bg-purple-600/20 active:translate-y-px"
-            style={{ minWidth: '160px' }}
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-6 py-3 rounded-full 
+            border border-purple-600 bg-black text-white font-medium text-lg 
+            hover:bg-purple-600/20 active:translate-y-[1px] transition-all"
+            style={{ minWidth: "160px" }}
           >
             <ArrowLeft className="w-5 h-5" />
             Go Back
           </button>
         </div>
       </div>
-    </div>
+    </section>
   );
 };
 

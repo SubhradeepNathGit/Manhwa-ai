@@ -608,7 +608,7 @@ const UploadPage = () => {
 
             <div className="bg-black/60 backdrop-blur-sm rounded-xl p-4 sm:p-5 max-h-40 sm:max-h-48 overflow-y-auto border border-purple-500/10 mb-4">
               {videoLogs.map((log, idx) => (
-                <div key={idx} className="text-xs sm:text-sm text-purple-300 font-mono mb-2 flex items-start gap-2">
+                <div key={idx} className="text-xs sm:text-sm text-yellow-400 font-mono mb-2 flex items-start gap-2">
                   <span className="text-yellow-400 flex-shrink-0">&gt;</span>
                   <span className="break-all">{log}</span>
                 </div>

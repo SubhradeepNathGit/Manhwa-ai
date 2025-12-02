@@ -81,29 +81,24 @@ html, body {
 .swal2-success .swal2-success-circular-line-right {
   border-color: #a855f7 !important;
 }
+.swal2-backdrop {
+    
+    background-color: rgba(0, 0, 0, 0.65) !important; 
+    
+  
+    backdrop-filter: blur(100px);
+    -webkit-backdrop-filter: blur(100px); 
+}
 
-/* ===============================
-   RESPONSIVE
-================================ */
+body.swal2-shown {
+    overflow-y: hidden !important; 
+    overflow: hidden !important; 
+}
+
 @media (max-width: 640px) {
   .swal2-custom-popup {
     padding: 1.2rem;
     border-radius: 1rem;
   }
 }
-/* ===============================
-    BACKDROP (Full-screen overlay blur)
-================================ */
-.swal2-backdrop {
-    /* Ensure the backdrop covers the screen and applies your base color */
-    background-color: rgba(0, 0, 0, 0.65) !important; 
-    
-    /* ADD these two lines to apply the blur to everything *behind* the modal */
-    backdrop-filter: blur(100px);
-    -webkit-backdrop-filter: blur(100px); /* For Safari compatibility */
-}
 
-body.swal2-shown {
-    overflow-y: hidden !important; /* Locks vertical scrolling */
-    overflow: hidden !important;   /* Locks both scroll directions */
-}

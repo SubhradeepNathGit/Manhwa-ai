@@ -34,12 +34,12 @@ const Landing = () => {
         </video>
       </div>
 
-      
+
 
       {/* Content - Only visible after video ends */}
       {videoEnded && (
         <div className="relative z-10 mt-70 px-4 sm:px-6 md:px-8 w-full max-w-4xl mx-auto">
-          
+
 
           {/* CTA Button */}
           <motion.div
@@ -49,11 +49,14 @@ const Landing = () => {
             className="mt-6 sm:mt-8 md:mt-10"
           >
             <Link
-              to="/home"
-              className="group relative inline-flex items-center gap-2 px-5 sm:px-6 md:px-8 py-2.5 sm:py-3 md:py-4 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 hover:scale-105 active:scale-95 transition-transform shadow-lg text-sm sm:text-base md:text-lg font-semibold"
+              to="/upload"
+              className={`mt-30 sm:mt-30 lg:mt-40 group relative inline-flex items-center gap-2 px-7 py-4 sm:px-10 sm:py-6 md:px-8 md:py-4 rounded-full bg-gradient-to-r from-purple-600/20 to-white/20
+ border border-purple-600 backdrop-blur-xl hover:bg-purple-600/60 hover:scale-105 active:scale-95 transition-all shadow-lg text-base sm:text-base md:text-lg font-semibold`}
+
+
             >
               <span>Get Started</span>
-              <FaArrowRight className="transition-transform group-hover:translate-x-1" />
+              <FaArrowRight className="transition-transform group-hover:translate-x-1 " />
             </Link>
           </motion.div>
         </div>

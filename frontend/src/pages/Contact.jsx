@@ -147,7 +147,7 @@ const Contact = () => {
               <button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="w-full py-3 rounded-full bg-gradient-to-r from-pink-500 to-purple-600 font-semibold  active:scale-90 transition-transform disabled:opacity-50"
+                className="w-full py-3 rounded-full bg-gradient-to-r from-purple-600/50 to-transparent border border-purple-700 font-semibold  active:scale-90 transition-transform disabled:opacity-50"
               >
                 {loading ? "Sending..." : "Send Message"}
               </button>

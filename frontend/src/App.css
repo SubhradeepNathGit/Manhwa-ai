@@ -5,12 +5,12 @@ html, body {
   
 
   scroll-behavior: smooth;
-  background-color: #000; /* ensures true black background */
-  color: #fff; /* optional – makes text visible on black */
+  background-color: #000; 
+  color: #000000; 
 }
 
 #root {
   width: 100%;
   min-height: 100vh;
-  background-color: #000; /* ensures root also black */
+  background-color: #000; 
 }

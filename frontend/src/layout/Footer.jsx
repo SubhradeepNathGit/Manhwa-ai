@@ -10,31 +10,29 @@ const Footer = () => {
 
       <div className="relative max-w-7xl mx-auto px-6 py-16 lg:py-20">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12 lg:gap-16">
-          {/* Brand */}
-          <div className="lg:col-span-1">
-            <Link to="/" className="flex items-center gap-2 hover:opacity-80 transition-opacity duration-300">
-              <svg 
-                width="32" 
-                height="32" 
-                viewBox="0 0 32 32" 
-                fill="none" 
-                xmlns="http://www.w3.org/2000/svg"
-                className="flex-shrink-0"
-              >
-                {/* Simple AI symbol - play button in circle */}
-                <circle cx="16" cy="16" r="14" stroke="white" strokeWidth="2" />
-                <path d="M13 10L22 16L13 22V10Z" stroke="white" strokeWidth="2" strokeLinejoin="round" fill="none" />
-              </svg>
-              <h2 className="text-2xl font-bold tracking-tight">
-                Manhwa.ai
-              </h2>
-            </Link>
-            <p className="mt-5 text-sm font-semibold text-gray-400 leading-relaxed max-w-xs font-light">
-              Transform your favorite manga into stunning videos with
-              AI-powered technology for professional Anime-inspired content
-              creation.
-            </p>
-          </div>
+         {/* Brand */}
+<div className="lg:col-span-1">
+  <Link
+    to="/"
+    className="flex items-center gap-2 hover:opacity-80 transition-opacity duration-300"
+  >
+    <img
+      src="/manhwa-logo.png"
+      alt="Manhwa AI Logo"
+      className="w-10 h-10 object-contain flex-shrink-0"
+    />
+    <h2 className="text-2xl font-bold tracking-tight">
+      MANHWA AI
+    </h2>
+  </Link>
+
+  <p className="mt-5 ml-3 text-sm font-semibold text-gray-400 leading-relaxed max-w-xs font-light">
+    Transform your favorite manga into stunning videos with
+    AI-powered technology for professional Anime-inspired content
+    creation.
+  </p>
+</div>
+
 
           {/* Quick Links */}
           <div>
@@ -187,7 +185,7 @@ const Footer = () => {
         <div className="mt-16 pt-8 border-t border-gray-900">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4 text-sm text-gray-500">
             <p className="font-semibold">
-              © {new Date().getFullYear()} Manhwa.ai - All rights reserved.
+              © {new Date().getFullYear()} MANHWA AI - All rights reserved.
             </p>
             <p className="font-semibold">
               Designed & Developed with by{" "}

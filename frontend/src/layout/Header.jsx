@@ -14,7 +14,6 @@ const Navbar = () => {
     const handleScroll = () => {
       setScrolled(window.scrollY > 20);
     };
-    
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -24,7 +23,7 @@ const Navbar = () => {
     setIsOpen(false);
   }, [location.pathname]);
 
-  // Lock scroll when menu is open (prevent background scrolling)
+  // Lock scroll when menu is open
   useEffect(() => {
     if (isOpen) {
       const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
@@ -34,47 +33,45 @@ const Navbar = () => {
       document.body.style.overflow = "unset";
       document.body.style.paddingRight = "0px";
     }
-    
     return () => {
       document.body.style.overflow = "unset";
       document.body.style.paddingRight = "0px";
     };
   }, [isOpen]);
 
-  // Close menu on ESC key and handle window resize
-  const handleKeyDown = useCallback((e) => {
-    if (e.key === "Escape" && isOpen) {
-      setIsOpen(false);
-    }
-  }, [isOpen]);
+  // Close menu with ESC
+  const handleKeyDown = useCallback(
+    (e) => {
+      if (e.key === "Escape" && isOpen) {
+        setIsOpen(false);
+      }
+    },
+    [isOpen]
+  );
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
-    
-    // Close mobile menu on window resize to desktop
+
     const handleResize = () => {
       if (window.innerWidth >= 768 && isOpen) {
         setIsOpen(false);
       }
     };
     window.addEventListener("resize", handleResize);
-    
+
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("resize", handleResize);
     };
   }, [handleKeyDown, isOpen]);
 
-  // Nav links
+  // Navigation links
   const navLinks = [
-    { name: "Home", path: "/", icon: Home },
-    // { name: "About", path: "/about", icon: Video },
-    { name: "Upload", path: "/home", icon: Video },
-    
+    // { name: "Home", path: "/", icon: Home },
+    { name: "Upload", path: "/upload", icon: Video },
     { name: "Contact", path: "/contact", icon: Mail },
   ];
 
-  // Active route detection (fixed for home route)
   const isActive = (path) => {
     if (path === "/") {
       return location.pathname === "/";
@@ -99,28 +96,22 @@ const Navbar = () => {
       >
         <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16 sm:h-20">
-            {/* Logo - Responsive sizing */}
+            
+            {/* Logo */}
             <Link
               to="/"
               className="flex items-center gap-1.5 sm:gap-2 text-white font-bold text-lg sm:text-xl tracking-tight hover:opacity-80 transition-opacity duration-200 flex-shrink-0"
             >
-              <svg 
-                width="32" 
-                height="32" 
-                viewBox="0 0 32 32" 
-                fill="none" 
-                xmlns="http://www.w3.org/2000/svg"
-                className="w-7 h-7 sm:w-8 sm:h-8 flex-shrink-0"
-              >
-               
-                <circle cx="16" cy="16" r="14" stroke="white" strokeWidth="2" />
-                <path d="M13 10L22 16L13 22V10Z" stroke="white" strokeWidth="2" strokeLinejoin="round" fill="none" />
-              </svg>
-              <span className="hidden xs:inline sm:inline">Manhwa.ai</span>
-              <span className="xs:hidden sm:hidden">Manhwa</span>
+              <img
+                src="/manhwa-logo.png"
+                alt="Manhwa Logo"
+                className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
+              />
+              <span className="hidden xs:inline sm:inline">MANHWA AI</span>
+              <span className="xs:hidden sm:hidden">MANHWA AI</span>
             </Link>
 
-            {/* Desktop Nav Links */}
+            {/* Desktop Nav */}
             <div className="hidden md:flex items-center space-x-6 lg:space-x-8">
               {navLinks.map((link) => (
                 <Link
@@ -138,13 +129,13 @@ const Navbar = () => {
               ))}
             </div>
 
-            {/* CTA Button - Desktop */}
+            {/* Desktop CTA */}
             <div className="hidden md:block">
               <button
-                onClick={() => navigate("/home")}
-                className="px-4 lg:px-5 py-2 bg-gradient-to-r from-pink-500 to-purple-600 hover:bg-blue-700 text-white font-semibold rounded-full transition-all duration-200 active:scale-95 text-sm lg:text-base whitespace-nowrap"
+                onClick={() => navigate("/docs")}
+                className="px-4 lg:px-5 py-2 bg-gradient-to-r from-purple-500/50 to-transparent text-white font-semibold rounded-full transition-all duration-200 hover:bg-purple-700 active:scale-95 text-sm lg:text-base whitespace-nowrap"
               >
-                Create Video
+                Learn More
               </button>
             </div>
 
@@ -155,46 +146,38 @@ const Navbar = () => {
               aria-expanded={isOpen}
               className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors duration-200 flex-shrink-0"
             >
-              {isOpen ? <X className="w-5 h-5 sm:w-6 sm:h-6" /> : <Menu className="w-5 h-5 sm:w-6 sm:h-6" />}
+              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </button>
           </div>
         </div>
       </nav>
 
-      {/* Mobile Menu Overlay & Sidebar */}
+      {/* Mobile Menu */}
       {isOpen && (
         <>
-          {/* Overlay - Full screen backdrop */}
+          {/* Overlay */}
           <div
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
             onClick={() => setIsOpen(false)}
             aria-hidden="true"
-            style={{ touchAction: 'none' }}
+            style={{ touchAction: "none" }}
           />
 
-          {/* Sliding Menu - Responsive width */}
+          {/* Sidebar */}
           <aside
-            className="fixed top-0 right-0 bottom-0 w-full xs:w-80 sm:w-72 bg-gray-900 z-50 p-4 sm:p-6 flex flex-col shadow-2xl md:hidden"
-            style={{ maxWidth: '100vw' }}
+            className="fixed top-0 right-0 bottom-0 w-full xs:w-80 sm:w-72 bg-transparent backdrop-blur-lg z-50 p-4 sm:p-6 flex flex-col shadow-2xl md:hidden"
           >
-            {/* Header with Close Button */}
+            {/* Header */}
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-2">
-                <svg 
-                  width="32" 
-                  height="32" 
-                  viewBox="0 0 32 32" 
-                  fill="none" 
-                  xmlns="http://www.w3.org/2000/svg"
-                  className="flex-shrink-0"
-                >
-                  {/* Simple AI symbol - play button in circle */}
-                  <circle cx="16" cy="16" r="14" stroke="white" strokeWidth="2" />
-                  <path d="M13 10L22 16L13 22V10Z" stroke="white" strokeWidth="2" strokeLinejoin="round" fill="none" />
-                </svg>
-                <span className="text-white font-bold text-lg">Manhwa.ai</span>
+                <img
+                  src="/manhwa-logo.png"
+                  alt="Manhwa Logo"
+                  className="w-10 h-10 object-contain"
+                />
+                <span className="text-white font-bold text-lg">MANHWA AI</span>
               </div>
-              
+
               <button
                 onClick={() => setIsOpen(false)}
                 aria-label="Close menu"
@@ -204,7 +187,7 @@ const Navbar = () => {
               </button>
             </div>
 
-            {/* Nav Links - Scrollable if needed */}
+            {/* Links */}
             <nav className="flex flex-col space-y-2 flex-1 overflow-y-auto">
               {navLinks.map((link) => (
                 <Link
@@ -213,7 +196,7 @@ const Navbar = () => {
                   onClick={() => setIsOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 text-base sm:text-lg font-medium rounded-lg transition-colors duration-200 ${
                     isActive(link.path)
-                      ? "bg-blue-600 text-white"
+                      ? "bg-purple-600 text-white"
                       : "text-gray-300 hover:text-white hover:bg-white/5"
                   }`}
                 >
@@ -223,20 +206,20 @@ const Navbar = () => {
               ))}
             </nav>
 
-            {/* Mobile CTA - Sticky at bottom */}
+            {/* Mobile CTA */}
             <div className="mt-auto pt-4 border-t border-gray-800">
               <button
-                onClick={() => handleNavigation("/home")}
-                className="w-full px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg transition-all duration-200 active:scale-95 text-base"
+                onClick={() => handleNavigation("/docs")}
+                className="w-full px-4 py-3 bg-gradient-to-r from-purple-600/50 to-transparent text-white font-semibold rounded-lg transition-all duration-200 active:scale-95 text-base"
               >
-                Create Video
+                LEARN MORE
               </button>
             </div>
           </aside>
         </>
       )}
 
-      {/* Spacer to prevent content from hiding under navbar */}
+      {/* Spacer */}
       <div className="h-16 sm:h-20" aria-hidden="true" />
     </>
   );

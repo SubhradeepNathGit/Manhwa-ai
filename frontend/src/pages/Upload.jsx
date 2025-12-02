@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 
 import MySwal from "../utils/swal"
+import AnimatedOrb from "../components/AnimatedOrb";
 
 
 // API
@@ -302,6 +303,17 @@ const UploadPage = () => {
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-1/3 right-1/3 w-96 h-96 bg-purple-800/10 rounded-full blur-3xl animate-pulse" />
+         <AnimatedOrb
+      className="w-72 h-72 bg-purple-500/30 top-10 left-10"
+      animateProps={{ x: [0, 40, -20, 0], y: [0, -20, 30, 0] }}
+      transitionProps={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
+    />
+
+    <AnimatedOrb
+      className="w-96 h-96 bg-pink-500/20 bottom-10 right-10"
+      animateProps={{ x: [0, -30, 20, 0], y: [0, 25, -25, 0] }}
+      transitionProps={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+    />
       </div>
 
       {/* TITLE */}

@@ -301,8 +301,8 @@ const UploadPage = () => {
     <main className="relative min-h-screen bg-gradient-to-br from-gray-950 via-black to-purple-950 text-white px-4 sm:px-6 lg:px-8 py-8 overflow-hidden">
       {/* BACKGROUND */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/50 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/3 right-1/3 w-96 h-96 bg-purple-800/50 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/3 right-1/3 w-96 h-96 bg-purple-800/20 rounded-full blur-3xl animate-pulse" />
          {/* <AnimatedOrb
       className="w-72 h-72 bg-purple-500/30 top-10 left-10"
       animateProps={{ x: [0, 40, -20, 0], y: [0, -20, 30, 0] }}

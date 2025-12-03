@@ -629,7 +629,7 @@ const UploadPage = () => {
 
             <div className="flex items-center justify-center gap-2 text-gray-400 text-xs sm:text-sm">
               <Zap className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="text-center">Video is being created in your browser using FFmpeg.wasm</span>
+              <span className="text-center">Creating Youtube-ready Video...</span>
             </div>
           </div>
         </div>

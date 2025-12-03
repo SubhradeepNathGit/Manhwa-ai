@@ -530,7 +530,7 @@ const UploadPage = () => {
         <button
           onClick={handleGenerateStory}
           disabled={isProcessing || !file}
-          className={`w-full sm:w-auto px-6 sm:px-8 lg:px-7 py-4 sm:py-5 rounded-full font-bold text-base sm:text-lg transition-all flex items-center justify-center gap-2 sm:gap-3 backdrop-blur-xl border shadow-[0_8px_25px_rgba(255,255,255,0.15)] 
+          className={`w-full sm:w-auto px-6 sm:px-8 lg:px-7 py-4 sm:py-5 rounded-full font-bold text-base sm:text-lg transition-all flex items-center justify-center gap-2 sm:gap-3 backdrop-blur-xl border] 
   ${isProcessing || !file
               ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
               : storyData
@@ -561,7 +561,7 @@ const UploadPage = () => {
           onClick={handleGenerateVideo}
           // Button is enabled only if storyData exists AND panels have been extracted (panelImages.length > 0)
           disabled={!storyData || isGeneratingVideo || panelImages.length === 0}
-          className={`w-full sm:w-auto px-6 sm:px-8 lg:px-7 py-4 sm:py-5 rounded-full font-bold text-base sm:text-lg transition-all flex items-center justify-center gap-2 sm:gap-3 backdrop-blur-xl border shadow-[0_8px_25px_rgba(255,255,255,0.15)] 
+          className={`w-full sm:w-auto px-6 sm:px-8 lg:px-7 py-4 sm:py-5 rounded-full font-bold text-base sm:text-lg transition-all flex items-center justify-center gap-2 sm:gap-3 backdrop-blur-xl border 
   ${(!storyData || isGeneratingVideo || panelImages.length === 0)
               ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
               : storyData

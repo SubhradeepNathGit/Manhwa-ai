@@ -26,7 +26,6 @@ jobs:
     - name: Install Dependencies
       run: |
         pip install supabase
-
     - name: Run Cleanup Script
       env:
         # Use the secrets you already added for your deploy workflow

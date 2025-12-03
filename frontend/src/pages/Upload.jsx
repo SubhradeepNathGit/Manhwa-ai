@@ -340,7 +340,7 @@ const UploadPage = () => {
       {/* ========================== UPLOAD + SETTINGS ========================== */}
       <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12 max-w-6xl mx-auto relative">
         {/* UPLOAD BOX */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 overflow-hidden">
           <div
             onDrop={handleDrop}
             onDragOver={(e) => {
@@ -377,7 +377,7 @@ const UploadPage = () => {
                 <p className="text-gray-500 text-xs mt-3 sm:mt-4 text-center">Maximum file size: 50MB</p>
               </div>
             ) : (
-              <div className="flex items-center gap-4 sm:gap-6">
+              <div className="flex items-center gap-4 sm:gap-6 overflow-hidden">
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-500/10 rounded-xl flex items-center justify-center flex-shrink-0 border border-purple-500/20">
                   <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-white/70" />
                 </div>
@@ -414,7 +414,7 @@ const UploadPage = () => {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                 {panelImages.map((url, idx) => (
-                  <div key={idx} className="relative group">
+                  <div key={idx} className="relative group overflow-hidden">
                     <img
                       src={url}
                       alt={`panel-${idx}`}
@@ -590,9 +590,9 @@ const UploadPage = () => {
 
       {/* ========================== VIDEO GENERATION STATUS ========================== */}
       {isGeneratingVideo && (
-        <div className="max-w-3xl mx-auto mb-8 sm:mb-10 lg:mb-12 relative px-4">
+        <div className="max-w-3xl mx-auto mb-8 sm:mb-10 lg:mb-12 relative px-4 mt-10">
           <div className="bg-gradient-to-br from-purple-900/20 via-purple-800/10 to-purple-900/20 backdrop-blur-xl p-6 sm:p-8 border border-purple-500/30 rounded-xl sm:rounded-2xl shadow-2xl">
-            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 ">
               <Video className="w-6 h-6 sm:w-7 sm:h-7 text-purple-400 animate-pulse" />
               <h3 className="text-xl sm:text-2xl font-bold">Generating Video</h3>
             </div>
@@ -636,7 +636,7 @@ const UploadPage = () => {
       )}
 
       {/* ========================== FINAL VIDEO ========================== */}
-      {/* ========================== FINAL VIDEO ========================== */}
+
       {videoUrl && !isGeneratingVideo && (
         <div className="max-w-5xl mx-auto mb-20 relative px-4">
           <div
@@ -644,57 +644,33 @@ const UploadPage = () => {
             className="bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-2xl overflow-hidden shadow-2xl border border-purple-500/30"
           >
             <div className="p-5 sm:p-6 border-b border-purple-500/20 bg-gradient-to-r from-purple-900/30 via-purple-800/20 to-purple-900/30 backdrop-blur-sm">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
 
-                {/* LEFT: TITLE + ICON */}
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 w-full sm:w-auto">
-                  <div className="w-12 h-12 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-purple-400 to-transparent flex items-center justify-center shrink-0">
-                    <CheckCircle className="w-6 h-6 sm:w-5 sm:h-5 text-white" />
-                  </div>
+              {/* FLEX WRAPPER */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
 
-                  <div className="text-center sm:text-left">
-                    <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
-                      Video Ready
-                    </h3>
-                    <p className="text-xs sm:text-xs md:text-base text-gray-400 mt-1">
-                      Your manga video has been generated successfully
-                    </p>
-                  </div>
+                {/* TEXT */}
+                <div className="text-center sm:text-left">
+                  <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
+                    Video Ready
+                  </h3>
+                  <p className="text-xs sm:text-sm md:text-base text-gray-400 mt-1">
+                    Your manga video has been generated successfully
+                  </p>
                 </div>
 
-                {/* RIGHT: BUTTONS */}
-                <div className="flex flex-row sm:flex-row flex-wrap items-center justify-center sm:justify-end gap-3 w-full sm:w-auto">
+                {/* DOWNLOAD BUTTON */}
+                <button
+                  onClick={handleDownload}
+                  className="w-12 h-12 sm:w-10 sm:h-10 lg:w-18 lg:h-12 rounded-full bg-gradient-to-br from-purple-300/20 to-transparent 
+      flex items-center justify-center border border-purple-700 shadow-lg 
+      hover:scale-110 active:scale-95 transition-all shrink-0 mx-auto sm:mx-0"
+                  title="Download Video"
+                >
+                  <Download className="w-6 h-6 sm:w-5 sm:h-5 lg:w-7 lg:h-7 text-white/80 animate-pulse" />
+                </button>
 
-                  {/* DOWNLOAD */}
-                  <button
-                    onClick={handleDownload}
-                    className="p-3 rounded-xl bg-black/80 backdrop-blur-lg w-12 h-12 
-      flex items-center justify-center transition-all border border-white/10 
-      hover:border-purple-500/50 shadow-lg active:scale-95 hover:scale-105 
-      sm:p-4 sm:w-14 sm:h-14"
-                    title="Download Video"
-                  >
-                    <Download className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </button>
-
-                  {/* FULLSCREEN */}
-                  <button
-                    onClick={toggleFullscreen}
-                    className="p-3 rounded-xl bg-black/80 backdrop-blur-lg w-12 h-12 
-      flex items-center justify-center transition-all border border-white/10 
-      hover:border-purple-500/50 shadow-lg active:scale-95 hover:scale-105 
-      sm:p-4 sm:w-14 sm:h-14"
-                    title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
-                  >
-                    {isFullscreen ? (
-                      <Minimize className="w-5 h-5 sm:w-6 sm:h-6" />
-                    ) : (
-                      <Maximize className="w-5 h-5 sm:w-6 sm:h-6" />
-                    )}
-                  </button>
-
-                </div>
               </div>
+
 
             </div>
 

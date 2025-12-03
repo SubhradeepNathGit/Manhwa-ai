@@ -90,7 +90,7 @@ const Navbar = () => {
       <nav
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
           scrolled
-            ? "bg-black/70 bg-opacity-80 backdrop-blur-lg shadow-lg"
+            ? "bg-black/70 bg-opacity-80 backdrop-blur-md shadow-lg"
             : "bg-black"
         }`}
       >
@@ -105,7 +105,7 @@ const Navbar = () => {
               <img
                 src="/manhwa-logo.png"
                 alt="Manhwa Logo"
-                className="w-8 h-8 sm:w-10 sm:h-10 object-contain"
+                className="w-8 h-8 sm:w-10 sm:h-10 object-contain animate-spin"
               />
               <span className="hidden xs:inline sm:inline">MANHWA AI</span>
               <span className="xs:hidden sm:hidden">MANHWA AI</span>

@@ -198,8 +198,8 @@ const DocumentationPage = () => {
         {/* TITLE SECTION */}
         <header className="text-center pt-4 sm:pt-8 pb-6 sm:pb-8 lg:pb-12">
           <div className="mb-3 sm:mb-4">
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl ml font-bold -mt-10 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 via-purple-700 to-purple-800 px-4">
-              MANHWA AI Documentation
+            <h1 className="text-3xl sm:text-3xl md:text-4xl lg:text-5xl ml font-bold -mt-5 bg-clip-text text-transparent bg-gradient-to-r from-purple-600 via-purple-700 to-blue-950 px-4">
+              GET STARTED WITH MANHWA AI 
             </h1>
           </div>
           <p className="text-gray-300 text-base sm:text-lg md:text-xl lg:text-2xl font-light tracking-wide px-4 max-w-4xl mx-auto">
@@ -262,7 +262,7 @@ const DocumentationPage = () => {
             {/* OVERVIEW */}
             <DocSection id="overview" icon={Zap} title="Overview">
               <p>
-                <strong>Manhwa.AI</strong> is an innovative platform that transforms manga/manhwa PDF files into engaging narrated videos automatically. Using advanced AI technology, it extracts panels, generates contextual narration, creates professional voiceovers, and compiles everything into a polished video—all in minutes.
+                <strong>MANHWA AI</strong> is an innovative platform that transforms manga/manhwa PDF files into engaging narrated videos automatically. Using advanced AI technology, it extracts panels, generates contextual narration, creates professional voiceovers, and compiles everything into a polished video—all in minutes.
               </p>
               <div className="py-6 sm:py-8 px-4 sm:px-6 rounded-xl bg-purple-900/30 border border-purple-500/30">
                 <p className="text-sm sm:text-base">
@@ -270,7 +270,7 @@ const DocumentationPage = () => {
                 </p>
               </div>
               <p>
-                Whether you're creating content for YouTube, social media, or personal enjoyment, Manhwa.AI handles the entire production pipeline automatically.
+                Whether you're creating content for YouTube, social media, or personal enjoyment, MANHWA AI handles the entire production pipeline automatically.
               </p>
             </DocSection>
 
@@ -332,7 +332,7 @@ const DocumentationPage = () => {
             {/* HOW IT WORKS */}
             <DocSection id="how-it-works" icon={GitBranch} title="How It Works">
               <p>
-                Manhwa.AI uses a <strong>Hybrid Processing Model</strong> that splits the workload between powerful backend servers and your browser for optimal performance.
+                MANHWA AI uses a <strong>Hybrid Processing Model</strong> that splits the workload between powerful backend servers and your browser for optimal performance.
               </p>
               
               
@@ -467,7 +467,7 @@ const DocumentationPage = () => {
             {/* TECH STACK */}
             <DocSection id="tech-stack" icon={Settings} title="Technology Stack">
               <p>
-                Manhwa.AI is built with cutting-edge technologies to deliver fast, reliable, and cost-effective video generation.
+                MANHWA AI is built with cutting-edge technologies to deliver fast, reliable, and cost-effective video generation.
               </p>
               <TechStackTable />
               <div className="mt-4 p-3 sm:p-4 bg-yellow-900/20 border border-yellow-500/30 rounded-lg">

@@ -171,17 +171,17 @@ const UploadPage = () => {
       }, 500);
 
       console.log("Story generated:", data);
-     MySwal.fire({
-  icon: "success",
-  title: "Story ready!",
-  html: `Generated <strong>${data.total_panels}</strong> panels<br/>Duration: <strong>${data.total_duration}s</strong><br/><small>Click <strong>Generate Video</strong> to create the final video in your browser.</small>`
-});
+      MySwal.fire({
+        icon: "success",
+        title: "Story ready!",
+        html: `Generated <strong>${data.total_panels}</strong> panels<br/>Duration: <strong>${data.total_duration}s</strong><br/><small>Click <strong>Generate Video</strong> to create the final video in your browser.</small>`
+      });
 
     } catch (err) {
       if (progressInterval) clearInterval(progressInterval);
       console.error("Story generation error:", err);
       // FIX: Ensure error is set correctly, though the rendering fix handles it better.
-      setError(err.message || String(err)); 
+      setError(err.message || String(err));
       setIsProcessing(false);
       setProgress(0);
     }
@@ -303,7 +303,7 @@ const UploadPage = () => {
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-1/3 right-1/3 w-96 h-96 bg-purple-800/20 rounded-full blur-3xl animate-pulse" />
-         {/* <AnimatedOrb
+        {/* <AnimatedOrb
       className="w-72 h-72 bg-purple-500/30 top-10 left-10"
       animateProps={{ x: [0, 40, -20, 0], y: [0, -20, 30, 0] }}
       transitionProps={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
@@ -324,7 +324,7 @@ const UploadPage = () => {
             alt="Manhwa Logo"
             className="w-10 h-10 sm:w-10 sm:h-10 lg:w-16 lg:h-16 object-contain"
           />
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-purple-500 to-purple-600">
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-500 via-purple-600 to-blue-950">
             マンファ AI
           </h1>
         </div>
@@ -353,10 +353,10 @@ const UploadPage = () => {
             }}
             onClick={() => fileInputRef.current?.click()}
             className={`relative border-2 border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-8 lg:p-10 transition-all duration-300 backdrop-blur-sm ${isDragging
-                ? "border-purple-400 bg-purple-500/10 scale-[1.02]"
-                : file
-                  ? "border-purple-500 bg-purple-500/5"
-                  : "border-gray-700 bg-gray-900/30"
+              ? "border-purple-400 bg-purple-500/10 scale-[1.02]"
+              : file
+                ? "border-purple-500 bg-purple-500/5"
+                : "border-gray-700 bg-gray-900/30"
               } hover:border-purple-400 cursor-pointer group`}
           >
             <input
@@ -370,7 +370,7 @@ const UploadPage = () => {
             {!file ? (
               <div className="flex flex-col items-center justify-center py-4 sm:py-8">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-purple-500/10 flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
-                  <Upload className="w-8 h-8 sm:w-10 sm:h-10 text-purple-400" />
+                  <Upload className="w-8 h-8 sm:w-10 sm:h-10 text-white/70" />
                 </div>
                 <p className="text-xl sm:text-2xl font-semibold mb-2 text-center">Drop your manga PDF here</p>
                 <p className="text-gray-400 text-sm text-center">or click to browse</p>
@@ -418,7 +418,7 @@ const UploadPage = () => {
                     <img
                       src={url}
                       alt={`panel-${idx}`}
-                      
+
                       crossOrigin="anonymous"
                       referrerPolicy="no-referrer"
                       className="w-full h-32 sm:h-40 md:h-48 object-cover rounded-lg sm:rounded-xl border border-purple-500/20 group-hover:scale-105 transition-all shadow-lg"
@@ -492,10 +492,10 @@ const UploadPage = () => {
               <label
                 key={opt.value}
                 className={`block p-3 sm:p-4 rounded-xl border transition-all cursor-pointer ${opt.disabled
-                    ? "opacity-50 cursor-not-allowed"
-                    : mode === opt.value
-                      ? "border-purple-500 bg-purple-500/10"
-                      : "border-gray-700 bg-gray-800/30 hover:bg-gray-800/50 hover:border-purple-500/50"
+                  ? "opacity-50 cursor-not-allowed"
+                  : mode === opt.value
+                    ? "border-purple-500 bg-purple-500/10"
+                    : "border-gray-700 bg-gray-800/30 hover:bg-gray-800/50 hover:border-purple-500/50"
                   }`}
               >
                 <div className="flex items-center gap-3">
@@ -636,7 +636,7 @@ const UploadPage = () => {
       )}
 
       {/* ========================== FINAL VIDEO ========================== */}
-           {/* ========================== FINAL VIDEO ========================== */}
+      {/* ========================== FINAL VIDEO ========================== */}
       {videoUrl && !isGeneratingVideo && (
         <div className="max-w-5xl mx-auto mb-20 relative px-4">
           <div
@@ -644,51 +644,47 @@ const UploadPage = () => {
             className="bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-2xl overflow-hidden shadow-2xl border border-purple-500/30"
           >
             <div className="p-5 sm:p-6 border-b border-purple-500/20 bg-gradient-to-r from-purple-900/30 via-purple-800/20 to-purple-900/30 backdrop-blur-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 sm:gap-6">
 
-                  {/* Icon */}
+                {/* LEFT: TITLE + ICON */}
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4 w-full sm:w-auto">
                   <div className="w-12 h-12 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-purple-400 to-transparent flex items-center justify-center shrink-0">
                     <CheckCircle className="w-6 h-6 sm:w-5 sm:h-5 text-white" />
                   </div>
 
-                  {/* Text Content */}
                   <div className="text-center sm:text-left">
                     <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
                       Video Ready
                     </h3>
-
                     <p className="text-xs sm:text-xs md:text-base text-gray-400 mt-1">
                       Your manga video has been generated successfully
                     </p>
                   </div>
-
                 </div>
 
+                {/* RIGHT: BUTTONS */}
+                <div className="flex flex-row sm:flex-row flex-wrap items-center justify-center sm:justify-end gap-3 w-full sm:w-auto">
 
-                {/* BUTTON GROUP - FULLY RESPONSIVE */}
-                <div className="flex flex-wrap gap-3 sm:gap-4 items-center justify-center sm:justify-start">
-
-                  {/* DOWNLOAD BUTTON */}
+                  {/* DOWNLOAD */}
                   <button
                     onClick={handleDownload}
-                    className="p-3 sm:p-4 rounded-xl bg-black/80 backdrop-blur-lg 
-               transition-all flex items-center justify-center gap-2 
-               border border-white/10 hover:border-purple-500/50 
-               shadow-lg active:scale-95 hover:scale-105 w-12 h-12 sm:w-14 sm:h-14"
+                    className="p-3 rounded-xl bg-black/80 backdrop-blur-lg w-12 h-12 
+      flex items-center justify-center transition-all border border-white/10 
+      hover:border-purple-500/50 shadow-lg active:scale-95 hover:scale-105 
+      sm:p-4 sm:w-14 sm:h-14"
                     title="Download Video"
                   >
                     <Download className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
 
-                  {/* FULLSCREEN BUTTON */}
+                  {/* FULLSCREEN */}
                   <button
                     onClick={toggleFullscreen}
-                    className="p-3 sm:p-4 rounded-xl bg-black/80 backdrop-blur-lg 
-               transition-all flex items-center justify-center gap-2
-               border border-white/10 hover:border-purple-500/50 
-               shadow-lg active:scale-95 hover:scale-105 w-12 h-12 sm:w-14 sm:h-14"
-                    title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                    className="p-3 rounded-xl bg-black/80 backdrop-blur-lg w-12 h-12 
+      flex items-center justify-center transition-all border border-white/10 
+      hover:border-purple-500/50 shadow-lg active:scale-95 hover:scale-105 
+      sm:p-4 sm:w-14 sm:h-14"
+                    title={isFullscreen ? 'Exit Fullscreen' : 'Fullscreen'}
                   >
                     {isFullscreen ? (
                       <Minimize className="w-5 h-5 sm:w-6 sm:h-6" />
@@ -699,6 +695,7 @@ const UploadPage = () => {
 
                 </div>
               </div>
+
             </div>
 
             <div className="relative bg-black overflow-hidden group">

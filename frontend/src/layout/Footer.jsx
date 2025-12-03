@@ -6,7 +6,7 @@ const Footer = () => {
   return (
     <footer className="relative bg-black text-white overflow-hidden">
       {/* Premium subtle shine effect */}
-      <div className="absolute inset-0 bg-gradient-to-b from-white/5 via-transparent to-transparent pointer-events-none"></div>
+      <div className="absolute inset-0 bg-gradient-to-b from-black via-transparent to-white/5 pointer-events-none"></div>
 
       <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-14 sm:py-16 lg:py-20">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-16">
@@ -20,7 +20,7 @@ const Footer = () => {
               <img
                 src="/manhwa-logo.png"
                 alt="Manhwa AI Logo"
-                className="w-10 h-10 sm:w-12 sm:h-12 object-contain"
+                className="w-10 h-10 sm:w-12 sm:h-12 object-contain animate-spin"
               />
               <h2 className="text-xl sm:text-2xl font-bold tracking-tight">
                 MANHWA AI
@@ -42,8 +42,9 @@ const Footer = () => {
             <ul className="space-y-3">
               {[
                 { name: "Home", link: "/" },
-                { name: "About", link: "/about" },
+               
                 { name: "Upload Manga", link: "/upload" },
+                 { name:"Learn More", link: "/docs" },
                 { name: "Contact", link: "/contact" },
               ].map((item, i) => (
                 <li key={i}>

@@ -1,33 +1,26 @@
 @import "tailwindcss";
 
+html, body {
+  background-color: #000 !important;
+}
 
 .swal2-custom-popup {
- background: rgba(0, 0, 0, 0.40) !important;
+  /* Dark glass background */
+  background: rgba(0, 0, 0, 0.45) !important;
   backdrop-filter: blur(24px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
 
-  /*  Purple Gradient Border (replaces white/25) */
-  border: 1.5px solid transparent !important;
+  /* Purple border */
+  border: 1.5px solid rgba(168, 85, 247, 0.6) !important; /* purple-500/60 */
   border-radius: 1.25rem !important;
 
-  /* Two-layer background: glass + gradient border */
-  background-image:
-    linear-gradient(
-      to bottom right,
-      rgba(168, 85, 247, 0.22), /* purple-500/22 */
-      rgba(88, 28, 135, 0.22)   /* purple-900/22 */
-    ),
-    linear-gradient(
-      to right,
-      #9333ea, /* purple-600 */
-      #6b21a8  /* purple-800 */
-    ) !important;
-  background-origin: border-box !important;
-  background-clip: padding-box, border-box !important;
+  /* Remove inner purple gradient layer fully */
+  background-image: none !important;
 
   padding: 1.6rem 2rem !important;
   color: white !important;
 }
+
 
 
 /* ===============================

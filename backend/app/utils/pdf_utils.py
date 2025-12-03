@@ -11,7 +11,8 @@ OPTIMIZATIONS:
   ✅ Added image resizing for oversized panels (max 1920px)
   ✅ Estimated time saved: 20-30 seconds per manga
 """
-
+import os 
+import sys
 import io
 import cv2
 import numpy as np
@@ -63,12 +64,15 @@ def _load_pdf_pages(pdf_path: str, dpi: int = 120, max_pages: int = 50) -> List[
     ⚡ OPTIMIZED: DPI reduced from 200 → 120
     Saves 50-60% file size with no visible quality loss for video
     """
+    # //POPPLER_PATH = r"C:\Program Files\poppler\Library\bin"
+    
     pages = convert_from_path(
         pdf_path,
         dpi=dpi,
         first_page=1,
         last_page=max_pages,
-        fmt="jpeg"
+        fmt="jpeg",
+        # poppler_path=POPPLER_PATH
     )
 
     processed = []

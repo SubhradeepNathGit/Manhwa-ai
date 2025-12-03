@@ -1,4 +1,7 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import Swal from "sweetalert2"; // <--- IMPORTED SWEETALERT
 import {
   Upload,
   Download,
@@ -16,10 +19,6 @@ import {
   Maximize,
   Minimize,
 } from "lucide-react";
-
-import MySwal from "../utils/swal"
-// import AnimatedOrb from "../components/AnimatedOrb";
-
 
 // API
 import { generateAudioStory } from '../api/api';
@@ -55,9 +54,38 @@ const UploadPage = () => {
 
   const fileInputRef = useRef(null);
   const videoContainerRef = useRef(null);
+  
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { user } = useAuth(); 
 
-  // Add shimmer animation keyframes
-  React.useEffect(() => {
+  // -----------------------------------------------------------------
+  // RESTORE SESSION DATA
+  // -----------------------------------------------------------------
+  useEffect(() => {
+    const savedData = sessionStorage.getItem("pendingStory");
+    const savedFileName = sessionStorage.getItem("pendingFileName");
+
+    if (savedData && savedFileName) {
+      try {
+        const parsed = JSON.parse(savedData);
+        setStoryData(parsed);
+        setPanelImages(parsed.image_urls || []);
+        setMangaName(savedFileName);
+        
+        // Ghost file trick to keep UI consistent
+        const dummyFile = { name: savedFileName, size: 0, type: "application/pdf" };
+        setFile(dummyFile);
+
+        console.log("♻️ Session Restored");
+      } catch (e) {
+        console.error("Failed to restore session", e);
+      }
+    }
+  }, []);
+
+  // Animation styles
+  useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
       @keyframes shimmer {
@@ -100,6 +128,9 @@ const UploadPage = () => {
       setProgress(0);
       setError(null);
       setVideoLogs([]);
+      
+      sessionStorage.removeItem("pendingStory");
+      sessionStorage.removeItem("pendingFileName");
     }
   };
 
@@ -119,16 +150,20 @@ const UploadPage = () => {
     setPanelImages([]);
     setStoryData(null);
     setVideoLogs([]);
+    
+    sessionStorage.removeItem("pendingStory");
+    sessionStorage.removeItem("pendingFileName");
+
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
   };
 
   // ===================================================================
-  // STEP 1: Generate Audio Story (Backend)
+  // STEP 1: Generate Story
   // ===================================================================
   const handleGenerateStory = async () => {
-    if (!file) {
+    if (!file || file.size === 0) {
       setError("Please upload a PDF first");
       return;
     }
@@ -149,7 +184,6 @@ const UploadPage = () => {
       formData.append("manga_name", mangaName);
       formData.append("manga_genre", "Action");
 
-      // Simulate progress
       progressInterval = setInterval(() => {
         setProgress(prev => {
           if (prev >= 90) return 90;
@@ -157,7 +191,6 @@ const UploadPage = () => {
         });
       }, 500);
 
-      // Real API call
       const data = await generateAudioStory(formData);
 
       if (progressInterval) clearInterval(progressInterval);
@@ -165,22 +198,27 @@ const UploadPage = () => {
 
       setStoryData(data);
       setPanelImages(data.image_urls || []);
+      
+      sessionStorage.setItem("pendingStory", JSON.stringify(data));
+      sessionStorage.setItem("pendingFileName", mangaName);
 
       setTimeout(() => {
         setIsProcessing(false);
       }, 500);
 
-      console.log("Story generated:", data);
-      MySwal.fire({
+      // ✨ SWEET ALERT SUCCESS
+      Swal.fire({
+        title: "Story Ready!",
+        text: `${data.total_panels} panels, ${data.total_duration}s duration. Click "Generate Video" to create final video!`,
         icon: "success",
-        title: "Story ready!",
-        html: `Generated <strong>${data.total_panels}</strong> panels<br/>Duration: <strong>${data.total_duration}s</strong><br/><small>Click <strong>Generate Video</strong> to create the final video in your browser.</small>`
+        confirmButtonColor: "#9333ea", // Purple
+        background: "#1a1a1a",
+        color: "#fff"
       });
 
     } catch (err) {
       if (progressInterval) clearInterval(progressInterval);
       console.error("Story generation error:", err);
-      // FIX: Ensure error is set correctly, though the rendering fix handles it better.
       setError(err.message || String(err));
       setIsProcessing(false);
       setProgress(0);
@@ -188,12 +226,32 @@ const UploadPage = () => {
   };
 
   // ===================================================================
-  // STEP 2: Generate Video (Browser - FFmpeg.wasm)
+  // STEP 2: Generate Video (WITH SWEET ALERT AUTH)
   // ===================================================================
   const handleGenerateVideo = async () => {
-    // Check for both storyData AND extracted panels (as requested previously)
-    if (!storyData || panelImages.length === 0) {
-      setError("Please generate story/extract panels first");
+    // 🔒 AUTH CHECK WITH SWEET ALERT
+    if (!user) {
+        const result = await Swal.fire({
+            title: "Login Required",
+            text: "You must be logged in to generate the final video. Your progress will be saved.",
+            icon: "info",
+            showCancelButton: true,
+            confirmButtonText: "Login Now",
+            cancelButtonText: "Cancel",
+            confirmButtonColor: "#9333ea",
+            cancelButtonColor: "#d33",
+            background: "#1a1a1a",
+            color: "#fff"
+        });
+
+        if (result.isConfirmed) {
+            navigate("/login", { state: { from: location.pathname } });
+        }
+        return;
+    }
+
+    if (!storyData) {
+      setError("Please generate story first");
       return;
     }
 
@@ -282,7 +340,7 @@ const UploadPage = () => {
     }
   };
 
-  React.useEffect(() => {
+  useEffect(() => {
     const handleFullscreenChange = () => {
       setIsFullscreen(!!(document.fullscreenElement || document.webkitFullscreenElement));
     };
@@ -294,26 +352,12 @@ const UploadPage = () => {
     };
   }, []);
 
-  // ===================================================================
-  // UI
-  // ===================================================================
   return (
     <main className="relative min-h-screen bg-gradient-to-br from-gray-950 via-black to-purple-950 text-white px-4 sm:px-6 lg:px-8 py-8 overflow-hidden">
       {/* BACKGROUND */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/30 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/3 right-1/3 w-96 h-96 bg-purple-800/20 rounded-full blur-3xl animate-pulse" />
-        {/* <AnimatedOrb
-      className="w-72 h-72 bg-purple-500/30 top-10 left-10"
-      animateProps={{ x: [0, 40, -20, 0], y: [0, -20, 30, 0] }}
-      transitionProps={{ duration: 9, repeat: Infinity, ease: "easeInOut" }}
-    />
-
-    <AnimatedOrb
-      className="w-96 h-96 bg-pink-500/20 bottom-10 right-10"
-      animateProps={{ x: [0, -30, 20, 0], y: [0, 25, -25, 0] }}
-      transitionProps={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-    /> */}
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/3 right-1/3 w-96 h-96 bg-purple-800/10 rounded-full blur-3xl animate-pulse" />
       </div>
 
       {/* TITLE */}
@@ -324,8 +368,8 @@ const UploadPage = () => {
             alt="Manhwa Logo"
             className="w-10 h-10 sm:w-10 sm:h-10 lg:w-16 lg:h-16 object-contain"
           />
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-500 via-purple-600 to-blue-950">
-            マンファ AI
+          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-purple-500 to-purple-600">
+            マンファ.ai
           </h1>
         </div>
         <p className="text-gray-300 text-base sm:text-xs lg:text-xl font-light tracking-wide px-4">
@@ -340,7 +384,7 @@ const UploadPage = () => {
       {/* ========================== UPLOAD + SETTINGS ========================== */}
       <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12 max-w-6xl mx-auto relative">
         {/* UPLOAD BOX */}
-        <div className="lg:col-span-2 overflow-hidden">
+        <div className="lg:col-span-2">
           <div
             onDrop={handleDrop}
             onDragOver={(e) => {
@@ -352,12 +396,13 @@ const UploadPage = () => {
               setIsDragging(false);
             }}
             onClick={() => fileInputRef.current?.click()}
-            className={`relative border-2 border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-8 lg:p-10 transition-all duration-300 backdrop-blur-sm ${isDragging
-              ? "border-purple-400 bg-purple-500/10 scale-[1.02]"
-              : file
+            className={`relative border-2 border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-8 lg:p-10 transition-all duration-300 backdrop-blur-sm ${
+              isDragging
+                ? "border-purple-400 bg-purple-500/10 scale-[1.02]"
+                : file
                 ? "border-purple-500 bg-purple-500/5"
                 : "border-gray-700 bg-gray-900/30"
-              } hover:border-purple-400 cursor-pointer group`}
+            } hover:border-purple-400 cursor-pointer group`}
           >
             <input
               ref={fileInputRef}
@@ -370,16 +415,16 @@ const UploadPage = () => {
             {!file ? (
               <div className="flex flex-col items-center justify-center py-4 sm:py-8">
                 <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-purple-500/10 flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
-                  <Upload className="w-8 h-8 sm:w-10 sm:h-10 text-white/70" />
+                  <Upload className="w-8 h-8 sm:w-10 sm:h-10 text-purple-400" />
                 </div>
                 <p className="text-xl sm:text-2xl font-semibold mb-2 text-center">Drop your manga PDF here</p>
                 <p className="text-gray-400 text-sm text-center">or click to browse</p>
                 <p className="text-gray-500 text-xs mt-3 sm:mt-4 text-center">Maximum file size: 50MB</p>
               </div>
             ) : (
-              <div className="flex items-center gap-4 sm:gap-6 overflow-hidden">
+              <div className="flex items-center gap-4 sm:gap-6">
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-500/10 rounded-xl flex items-center justify-center flex-shrink-0 border border-purple-500/20">
-                  <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-white/70" />
+                  <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-purple-400" />
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -414,17 +459,16 @@ const UploadPage = () => {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                 {panelImages.map((url, idx) => (
-                  <div key={idx} className="relative group overflow-hidden">
+                  <div key={idx} className="relative group">
                     <img
                       src={url}
                       alt={`panel-${idx}`}
-
                       crossOrigin="anonymous"
                       referrerPolicy="no-referrer"
                       className="w-full h-32 sm:h-40 md:h-48 object-cover rounded-lg sm:rounded-xl border border-purple-500/20 group-hover:scale-105 transition-all shadow-lg"
                       onError={(e) => {
-                        console.warn("Failed to load image:", url);
-                        e.target.style.opacity = 0.5; // Visual feedback
+                          console.warn("Failed to load image:", url);
+                          e.target.style.opacity = 0.5;
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg sm:rounded-xl flex items-end justify-center pb-2">
@@ -436,41 +480,10 @@ const UploadPage = () => {
             </div>
           )}
 
-          {/* ========================== PROCESSING STATUS - MOVED HERE ========================== */}
-          {isProcessing && (
-            <div className="mt-4 sm:mt-6">
-              <div className="bg-gray-900/40 backdrop-blur-md p-6 sm:p-8 border border-purple-500/30 rounded-xl sm:rounded-2xl shadow-2xl">
-                <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-                  <Cpu className="w-6 h-6 sm:w-7 sm:h-7 text-purple-400 animate-pulse" />
-                  <h3 className="text-xl sm:text-2xl font-semibold">Processing Manga PDF</h3>
-                </div>
-
-                <div className="flex justify-between mb-3 text-sm sm:text-base">
-                  <span className="text-gray-300 font-medium">Backend Processing</span>
-                  <span className="text-purple-400 font-bold text-base sm:text-lg">{progress}%</span>
-                </div>
-
-                <div className="h-2 sm:h-3 bg-gray-800/50 rounded-full overflow-hidden mb-4 sm:mb-6">
-                  <div
-                    className="h-full bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 transition-all duration-500 ease-out relative"
-                    style={{ width: `${progress}%` }}
-                  >
-                    <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-center gap-2 text-gray-400 text-xs sm:text-sm">
-                  <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
-                  <span className="text-center">Extracting panels, running OCR, generating script and audio...</span>
-                </div>
-              </div>
-            </div>
-          )}
-
           {error && (
             <div className="mt-4 p-3 sm:p-4 bg-red-500/10 backdrop-blur-sm border border-red-500/30 rounded-xl flex gap-3 animate-pulse">
               <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-red-400 flex-shrink-0" />
-              <p className="text-red-300 text-sm sm:text-base">{String(error)}</p> {/* FIX: Use String(error) to correctly display object errors */}
+              <p className="text-red-300 text-sm sm:text-base">{error}</p>
             </div>
           )}
         </div>
@@ -491,12 +504,13 @@ const UploadPage = () => {
             ].map((opt) => (
               <label
                 key={opt.value}
-                className={`block p-3 sm:p-4 rounded-xl border transition-all cursor-pointer ${opt.disabled
-                  ? "opacity-50 cursor-not-allowed"
-                  : mode === opt.value
+                className={`block p-3 sm:p-4 rounded-xl border transition-all cursor-pointer ${
+                  opt.disabled
+                    ? "opacity-50 cursor-not-allowed"
+                    : mode === opt.value
                     ? "border-purple-500 bg-purple-500/10"
                     : "border-gray-700 bg-gray-800/30 hover:bg-gray-800/50 hover:border-purple-500/50"
-                  }`}
+                }`}
               >
                 <div className="flex items-center gap-3">
                   <input
@@ -530,13 +544,14 @@ const UploadPage = () => {
         <button
           onClick={handleGenerateStory}
           disabled={isProcessing || !file}
-          className={`w-full sm:w-auto px-6 sm:px-8 lg:px-7 py-4 sm:py-5 rounded-full font-bold text-base sm:text-lg transition-all flex items-center justify-center gap-2 sm:gap-3 backdrop-blur-xl border] 
-  ${isProcessing || !file
-              ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
-              : storyData
-                ? "bg-gradient-to-r from-purple-600 to-transparent hover:from-purple-500 hover:to-purple-700 border-purple-400 hover:scale-105 active:scale-95"
-                : "bg-white/10 border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95"
-            }`}
+          className={`w-full sm:w-auto px-6 sm:px-8 lg:px-7 py-4 sm:py-5 rounded-full font-bold text-base sm:text-lg transition-all flex items-center justify-center gap-2 sm:gap-3 backdrop-blur-xl border shadow-[0_8px_25px_rgba(255,255,255,0.15)] 
+  ${
+    isProcessing || !file
+      ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
+      : storyData
+      ? "bg-gradient-to-r from-purple-600 to-transparent hover:from-purple-500 hover:to-purple-700 border-purple-400 hover:scale-105 active:scale-95"
+      : "bg-white/10 border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95"
+  }`}
         >
           {isProcessing ? (
             <>
@@ -559,15 +574,15 @@ const UploadPage = () => {
         {/* Step 2: Generate Video (Browser) */}
         <button
           onClick={handleGenerateVideo}
-          // Button is enabled only if storyData exists AND panels have been extracted (panelImages.length > 0)
-          disabled={!storyData || isGeneratingVideo || panelImages.length === 0}
-          className={`w-full sm:w-auto px-6 sm:px-8 lg:px-7 py-4 sm:py-5 rounded-full font-bold text-base sm:text-lg transition-all flex items-center justify-center gap-2 sm:gap-3 backdrop-blur-xl border 
-  ${(!storyData || isGeneratingVideo || panelImages.length === 0)
-              ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
-              : storyData
-                ? "bg-gradient-to-r from-purple-600 to-transparent hover:from-purple-500 hover:to-purple-700 border-purple-400 hover:scale-105 active:scale-95"
-                : "bg-white/10 border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95"
-            }`}
+          disabled={!storyData || isGeneratingVideo}
+          className={`w-full sm:w-auto px-6 sm:px-8 lg:px-7 py-4 sm:py-5 rounded-full font-bold text-base sm:text-lg transition-all flex items-center justify-center gap-2 sm:gap-3 backdrop-blur-xl border shadow-[0_8px_25px_rgba(255,255,255,0.15)] 
+  ${
+    isProcessing || !file
+      ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
+      : storyData
+      ? "bg-gradient-to-r from-purple-600 to-transparent hover:from-purple-500 hover:to-purple-700 border-purple-400 hover:scale-105 active:scale-95"
+      : "bg-white/10 border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95"
+  }`}
         >
           {isGeneratingVideo ? (
             <>
@@ -588,11 +603,42 @@ const UploadPage = () => {
         </button>
       </div>
 
+      {/* ========================== PROCESSING STATUS ========================== */}
+      {isProcessing && (
+        <div className="max-w-3xl mx-auto mb-8 sm:mb-10 lg:mb-12 relative px-4">
+          <div className="bg-gray-900/40 backdrop-blur-md p-6 sm:p-8 border border-purple-500/30 rounded-xl sm:rounded-2xl shadow-2xl">
+            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+              <Cpu className="w-6 h-6 sm:w-7 sm:h-7 text-purple-400 animate-pulse" />
+              <h3 className="text-xl sm:text-2xl font-bold">Processing Manga</h3>
+            </div>
+
+            <div className="flex justify-between mb-3 text-sm sm:text-base">
+              <span className="text-gray-300 font-medium">Backend Processing</span>
+              <span className="text-purple-400 font-bold text-base sm:text-lg">{progress}%</span>
+            </div>
+
+            <div className="h-2 sm:h-3 bg-gray-800/50 rounded-full overflow-hidden mb-4 sm:mb-6">
+              <div
+                className="h-full bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 transition-all duration-500 ease-out relative"
+                style={{ width: `${progress}%` }}
+              >
+                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 text-gray-400 text-xs sm:text-sm">
+              <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+              <span className="text-center">Extracting panels, running OCR, generating script and audio...</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ========================== VIDEO GENERATION STATUS ========================== */}
       {isGeneratingVideo && (
-        <div className="max-w-3xl mx-auto mb-8 sm:mb-10 lg:mb-12 relative px-4 mt-10">
+        <div className="max-w-3xl mx-auto mb-8 sm:mb-10 lg:mb-12 relative px-4">
           <div className="bg-gradient-to-br from-purple-900/20 via-purple-800/10 to-purple-900/20 backdrop-blur-xl p-6 sm:p-8 border border-purple-500/30 rounded-xl sm:rounded-2xl shadow-2xl">
-            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6 ">
+            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
               <Video className="w-6 h-6 sm:w-7 sm:h-7 text-purple-400 animate-pulse" />
               <h3 className="text-xl sm:text-2xl font-bold">Generating Video</h3>
             </div>
@@ -620,8 +666,8 @@ const UploadPage = () => {
 
             <div className="bg-black/60 backdrop-blur-sm rounded-xl p-4 sm:p-5 max-h-40 sm:max-h-48 overflow-y-auto border border-purple-500/10 mb-4">
               {videoLogs.map((log, idx) => (
-                <div key={idx} className="text-xs sm:text-sm text-yellow-400 font-mono mb-2 flex items-start gap-2">
-                  <span className="text-yellow-400 flex-shrink-0">&gt;</span>
+                <div key={idx} className="text-xs sm:text-sm text-purple-300 font-mono mb-2 flex items-start gap-2">
+                  <span className="text-purple-500 flex-shrink-0">&gt;</span>
                   <span className="break-all">{log}</span>
                 </div>
               ))}
@@ -629,14 +675,13 @@ const UploadPage = () => {
 
             <div className="flex items-center justify-center gap-2 text-gray-400 text-xs sm:text-sm">
               <Zap className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="text-center">Creating Youtube-ready Video...</span>
+              <span className="text-center">Video is being created in your browser using FFmpeg.wasm</span>
             </div>
           </div>
         </div>
       )}
 
       {/* ========================== FINAL VIDEO ========================== */}
-
       {videoUrl && !isGeneratingVideo && (
         <div className="max-w-5xl mx-auto mb-20 relative px-4">
           <div
@@ -644,34 +689,40 @@ const UploadPage = () => {
             className="bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-2xl overflow-hidden shadow-2xl border border-purple-500/30"
           >
             <div className="p-5 sm:p-6 border-b border-purple-500/20 bg-gradient-to-r from-purple-900/30 via-purple-800/20 to-purple-900/30 backdrop-blur-sm">
-
-              {/* FLEX WRAPPER */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 w-full">
-
-                {/* TEXT */}
-                <div className="text-center sm:text-left">
-                  <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
-                    Video Ready
-                  </h3>
-                  <p className="text-xs sm:text-sm md:text-base text-gray-400 mt-1">
-                    Your manga video has been generated successfully
-                  </p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-transparent flex items-center justify-center">
+                    <CheckCircle className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl sm:text-2xl font-bold text-white">Video Ready</h3>
+                    <p className="text-sm text-gray-400">
+                      Your manga video has been generated successfully
+                    </p>
+                  </div>
                 </div>
 
-                {/* DOWNLOAD BUTTON */}
-                <button
-                  onClick={handleDownload}
-                  className="w-12 h-12 sm:w-10 sm:h-10 lg:w-18 lg:h-12 rounded-full bg-gradient-to-br from-purple-300/20 to-transparent 
-      flex items-center justify-center border border-purple-700 shadow-lg 
-      hover:scale-110 active:scale-95 transition-all shrink-0 mx-auto sm:mx-0"
-                  title="Download Video"
-                >
-                  <Download className="w-6 h-6 sm:w-5 sm:h-5 lg:w-7 lg:h-7 text-white/80 animate-pulse" />
-                </button>
-
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleDownload}
+                    className="p-3 rounded-lg bg-black/80 backdrop-blur-md transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-purple-500/50 shadow-lg hover:scale-110"
+                    title="Download Video"
+                  >
+                    <Download className="w-5 h-5" />
+                  </button>
+                  {/* <button
+                    onClick={toggleFullscreen}
+                    className="p-3 rounded-lg bg-black/80 backdrop-blur-md transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-purple-500/50 shadow-lg hover:scale-110"
+                    title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
+                  >
+                    {isFullscreen ? (
+                      <Minimize className="w-5 h-5" />
+                    ) : (
+                      <Maximize className="w-5 h-5" />
+                    )}
+                  </button> */}
+                </div>
               </div>
-
-
             </div>
 
             <div className="relative bg-black overflow-hidden group">

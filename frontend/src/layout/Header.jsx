@@ -1,13 +1,15 @@
 // src/components/layout/Navbar.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Video, Home, Mail } from "lucide-react";
+import { Menu, X, Video, Home, Mail, LogIn, LogOut, BookOpen } from "lucide-react"; // Added BookOpen icon
+import { useAuth } from "../context/AuthContext";
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   // Handle scroll effect
   useEffect(() => {
@@ -39,6 +41,20 @@ const Navbar = () => {
     };
   }, [isOpen]);
 
+  // Handle Logout
+  const handleLogout = async () => {
+    // 1. Clear the saved story data
+    sessionStorage.removeItem("pendingStory");
+    sessionStorage.removeItem("pendingFileName");
+    
+    // 2. Perform Supabase Logout
+    await logout();
+    
+    // 3. Close menu and redirect
+    setIsOpen(false);
+    navigate("/"); 
+  };
+
   // Close menu with ESC
   const handleKeyDown = useCallback(
     (e) => {
@@ -51,24 +67,22 @@ const Navbar = () => {
 
   useEffect(() => {
     window.addEventListener("keydown", handleKeyDown);
-
     const handleResize = () => {
       if (window.innerWidth >= 768 && isOpen) {
         setIsOpen(false);
       }
     };
     window.addEventListener("resize", handleResize);
-
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("resize", handleResize);
     };
   }, [handleKeyDown, isOpen]);
 
-  // Navigation links
+  // Navigation links - Added Docs here
   const navLinks = [
-    // { name: "Home", path: "/", icon: Home },
     { name: "Upload", path: "/upload", icon: Video },
+    { name: "Docs", path: "/docs", icon: BookOpen }, // Added Docs here
     { name: "Contact", path: "/contact", icon: Mail },
   ];
 
@@ -83,7 +97,7 @@ const Navbar = () => {
     setIsOpen(false);
     navigate(path);
   };
-
+  
   return (
     <>
       {/* Navbar */}
@@ -111,13 +125,13 @@ const Navbar = () => {
               <span className="xs:hidden sm:hidden">MANHWA AI</span>
             </Link>
 
-            {/* Desktop Nav */}
+            {/* Desktop Nav - Now includes Docs */}
             <div className="hidden md:flex items-center space-x-6 lg:space-x-8">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className="relative text-gray-300 hover:text-white font-medium transition-colors duration-200 group text-sm lg:text-base"
+                  className="relative text-gray-300 hover:text-white font-medium transition-colors duration-200 group text-sm lg:text-base flex items-center gap-2"
                 >
                   {link.name}
                   <span
@@ -129,14 +143,35 @@ const Navbar = () => {
               ))}
             </div>
 
-            {/* Desktop CTA */}
-            <div className="hidden md:block">
-              <button
-                onClick={() => navigate("/docs")}
-                className="px-4 lg:px-5 py-2 bg-gradient-to-r from-purple-500/50 to-transparent text-white font-semibold rounded-full transition-all duration-200 hover:bg-purple-700 active:scale-95 text-sm lg:text-base whitespace-nowrap"
-              >
-                Learn More
-              </button>
+            {/* Desktop Right Side - ONLY AUTH now */}
+            <div className="hidden md:flex items-center gap-4">
+                
+                {/* AUTH LOGIC */}
+                {user ? (
+                    <div className="flex items-center gap-3">
+                        <div className="flex flex-col items-end">
+                            <span className="text-xs text-gray-400">Logged in as</span>
+                            <span className="text-sm font-bold text-white max-w-[120px] truncate">
+                                {user.email?.split('@')[0]}
+                            </span>
+                        </div>
+                        <button
+                            onClick={handleLogout}
+                            title="Logout"
+                            className="p-2 bg-white/10 hover:bg-red-500/20 hover:text-red-400 rounded-full transition-all"
+                        >
+                            <LogOut className="w-5 h-5" />
+                        </button>
+                    </div>
+                ) : (
+                    <button
+                        onClick={() => navigate("/login")}
+                        className="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-full transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/30 active:scale-95 text-sm flex items-center gap-2"
+                    >
+                        <LogIn className="w-4 h-4" />
+                        Login
+                    </button>
+                )}
             </div>
 
             {/* Mobile Menu Toggle */}
@@ -165,7 +200,7 @@ const Navbar = () => {
 
           {/* Sidebar */}
           <aside
-            className="fixed top-0 right-0 bottom-0 w-full xs:w-80 sm:w-72 bg-transparent backdrop-blur-lg z-50 p-4 sm:p-6 flex flex-col shadow-2xl md:hidden"
+            className="fixed top-0 right-0 bottom-0 w-full xs:w-80 sm:w-72 bg-gray-900/95 backdrop-blur-xl z-50 p-4 sm:p-6 flex flex-col shadow-2xl md:hidden border-l border-white/10"
           >
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
@@ -187,7 +222,20 @@ const Navbar = () => {
               </button>
             </div>
 
-            {/* Links */}
+            {/* Mobile User Info (If Logged In) */}
+            {user && (
+                <div className="mb-6 p-4 bg-white/5 rounded-xl border border-white/10 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                        {user.email?.[0].toUpperCase()}
+                    </div>
+                    <div className="overflow-hidden">
+                        <p className="text-xs text-gray-400 uppercase tracking-wider">Welcome</p>
+                        <p className="text-sm font-semibold text-white truncate">{user.email}</p>
+                    </div>
+                </div>
+            )}
+
+            {/* Links - Now includes Docs */}
             <nav className="flex flex-col space-y-2 flex-1 overflow-y-auto">
               {navLinks.map((link) => (
                 <Link
@@ -206,14 +254,28 @@ const Navbar = () => {
               ))}
             </nav>
 
-            {/* Mobile CTA */}
-            <div className="mt-auto pt-4 border-t border-gray-800">
-              <button
-                onClick={() => handleNavigation("/docs")}
-                className="w-full px-4 py-3 bg-gradient-to-r from-purple-600/50 to-transparent text-white font-semibold rounded-lg transition-all duration-200 active:scale-95 text-base"
-              >
-                LEARN MORE
-              </button>
+            {/* Mobile Auth Button */}
+            <div className="mt-auto pt-4 border-t border-gray-800 space-y-3">
+              {user ? (
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold rounded-lg transition-colors border border-red-500/20"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    Logout
+                  </button>
+              ) : (
+                  <button
+                    onClick={() => {
+                        setIsOpen(false);
+                        navigate("/login");
+                    }}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-lg transition-all shadow-lg shadow-purple-500/20"
+                  >
+                    <LogIn className="w-5 h-5" />
+                    Login / Sign Up
+                  </button>
+              )}
             </div>
           </aside>
         </>

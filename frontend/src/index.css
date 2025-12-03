@@ -10,7 +10,7 @@ body.swal2-shown {
 }
 .swal2-custom-popup {
   /* Dark glass background */
-  background: rgba(0, 0, 0, 0.45) !important;
+  background: rgba(0, 0, 0, 0.75) !important;
   backdrop-filter: blur(24px) saturate(180%) !important;
   -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
 

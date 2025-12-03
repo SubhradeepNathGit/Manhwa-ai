@@ -340,7 +340,7 @@ const UploadPage = () => {
       {/* ========================== UPLOAD + SETTINGS ========================== */}
       <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12 max-w-6xl mx-auto relative">
         {/* UPLOAD BOX */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 overflow-hidden">
           <div
             onDrop={handleDrop}
             onDragOver={(e) => {
@@ -377,7 +377,7 @@ const UploadPage = () => {
                 <p className="text-gray-500 text-xs mt-3 sm:mt-4 text-center">Maximum file size: 50MB</p>
               </div>
             ) : (
-              <div className="flex items-center gap-4 sm:gap-6">
+              <div className="flex items-center gap-4 sm:gap-6 overflow-hidden">
                 <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-500/10 rounded-xl flex items-center justify-center flex-shrink-0 border border-purple-500/20">
                   <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-white/70" />
                 </div>
@@ -414,7 +414,7 @@ const UploadPage = () => {
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
                 {panelImages.map((url, idx) => (
-                  <div key={idx} className="relative group">
+                  <div key={idx} className="relative group overflow-hidden">
                     <img
                       src={url}
                       alt={`panel-${idx}`}

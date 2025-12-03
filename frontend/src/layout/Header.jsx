@@ -46,7 +46,7 @@ const Navbar = () => {
     // 1. Clear the saved story data
     sessionStorage.removeItem("pendingStory");
     sessionStorage.removeItem("pendingFileName");
-    
+    console.log("🧹 Clearing session data...");
     // 2. Perform Supabase Logout
     await logout();
     

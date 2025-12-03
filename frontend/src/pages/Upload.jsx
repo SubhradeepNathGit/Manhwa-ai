@@ -636,6 +636,7 @@ const UploadPage = () => {
       )}
 
       {/* ========================== FINAL VIDEO ========================== */}
+           {/* ========================== FINAL VIDEO ========================== */}
       {videoUrl && !isGeneratingVideo && (
         <div className="max-w-5xl mx-auto mb-20 relative px-4">
           <div
@@ -644,37 +645,58 @@ const UploadPage = () => {
           >
             <div className="p-5 sm:p-6 border-b border-purple-500/20 bg-gradient-to-r from-purple-900/30 via-purple-800/20 to-purple-900/30 backdrop-blur-sm">
               <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-transparent flex items-center justify-center">
-                    <CheckCircle className="w-6 h-6 text-white" />
+                <div className="flex flex-col sm:flex-row items-center sm:items-start gap-3 sm:gap-4">
+
+                  {/* Icon */}
+                  <div className="w-12 h-12 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-purple-400 to-transparent flex items-center justify-center shrink-0">
+                    <CheckCircle className="w-6 h-6 sm:w-5 sm:h-5 text-white" />
                   </div>
-                  <div>
-                    <h3 className="text-xl sm:text-2xl font-bold text-white">Video Ready</h3>
-                    <p className="text-sm text-gray-400">
+
+                  {/* Text Content */}
+                  <div className="text-center sm:text-left">
+                    <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-white">
+                      Video Ready
+                    </h3>
+
+                    <p className="text-xs sm:text-xs md:text-base text-gray-400 mt-1">
                       Your manga video has been generated successfully
                     </p>
                   </div>
+
                 </div>
 
-                <div className="flex gap-3">
+
+                {/* BUTTON GROUP - FULLY RESPONSIVE */}
+                <div className="flex flex-wrap gap-3 sm:gap-4 items-center justify-center sm:justify-start">
+
+                  {/* DOWNLOAD BUTTON */}
                   <button
                     onClick={handleDownload}
-                    className="p-3 rounded-lg bg-black/80 backdrop-blur-md transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-purple-500/50 shadow-lg hover:scale-110"
+                    className="p-3 sm:p-4 rounded-xl bg-black/80 backdrop-blur-lg 
+               transition-all flex items-center justify-center gap-2 
+               border border-white/10 hover:border-purple-500/50 
+               shadow-lg active:scale-95 hover:scale-105 w-12 h-12 sm:w-14 sm:h-14"
                     title="Download Video"
                   >
-                    <Download className="w-5 h-5" />
+                    <Download className="w-5 h-5 sm:w-6 sm:h-6" />
                   </button>
+
+                  {/* FULLSCREEN BUTTON */}
                   <button
                     onClick={toggleFullscreen}
-                    className="p-3 rounded-lg bg-black/80 backdrop-blur-md transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-purple-500/50 shadow-lg hover:scale-110"
+                    className="p-3 sm:p-4 rounded-xl bg-black/80 backdrop-blur-lg 
+               transition-all flex items-center justify-center gap-2
+               border border-white/10 hover:border-purple-500/50 
+               shadow-lg active:scale-95 hover:scale-105 w-12 h-12 sm:w-14 sm:h-14"
                     title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
                   >
                     {isFullscreen ? (
-                      <Minimize className="w-5 h-5" />
+                      <Minimize className="w-5 h-5 sm:w-6 sm:h-6" />
                     ) : (
-                      <Maximize className="w-5 h-5" />
+                      <Maximize className="w-5 h-5 sm:w-6 sm:h-6" />
                     )}
                   </button>
+
                 </div>
               </div>
             </div>

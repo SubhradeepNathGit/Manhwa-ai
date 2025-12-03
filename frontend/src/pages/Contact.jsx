@@ -56,6 +56,7 @@ const Contact = () => {
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
   const [openFaq, setOpenFaq] = useState(null);
 
   const validate = () => {
@@ -67,18 +68,47 @@ const Contact = () => {
     return err;
   };
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e) => {
+    e.preventDefault();
     const err = validate();
     setErrors(err);
     if (Object.keys(err).length) return;
 
     setLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-    console.log(form);
-    setLoading(false);
-    setSuccess(true);
-    setForm({ name: "", email: "", message: "" });
-    setTimeout(() => setSuccess(false), 4000);
+    setErrorMessage("");
+
+    try {
+      // 🔥 WEB3FORMS LOGIC STARTS HERE
+      const response = await fetch("https://api.web3forms.com/submit", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify({
+          access_key: import.meta.env.VITE_WEB3FORMS_ACCESS_KEY,
+          name: form.name,
+          email: form.email,
+          message: form.message,
+          subject: "New Message from Manhwa.ai Website", // Optional: Custom subject
+        }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        setSuccess(true);
+        setForm({ name: "", email: "", message: "" });
+        setTimeout(() => setSuccess(false), 4000);
+      } else {
+        setErrorMessage(result.message || "Failed to send message.");
+      }
+    } catch (error) {
+      console.error("Error sending email:", error);
+      setErrorMessage("Something went wrong. Please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

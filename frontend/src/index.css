@@ -4,6 +4,10 @@ html, body {
   background-color: #000 !important;
 }
 
+html.swal2-shown,
+body.swal2-shown {
+  overflow: hidden !important;
+}
 .swal2-custom-popup {
   /* Dark glass background */
   background: rgba(0, 0, 0, 0.45) !important;

@@ -5,100 +5,100 @@ html, body {
 }
 
 /* ===============================
-   MAIN POPUP (Glassmorphism + Purple Border)
+   POPUP — Stronger Glassmorphism for Vercel
 ================================ */
 .swal2-custom-popup {
-  background: rgba(35, 0, 60, 0.35); 
-  backdrop-filter: blur(22px) saturate(180%); 
-  -webkit-backdrop-filter: blur(22px) saturate(180%);
+  background: rgba(60, 0, 110, 0.55) !important; /* stronger opacity */
+  backdrop-filter: blur(22px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(22px) saturate(180%) !important;
 
-  border: 1.5px solid #b676f373; 
-  border-radius: 1.4rem;
+  border: 1.5px solid #b676f3b5 !important;
+  border-radius: 1.4rem !important;
 
-  padding: 1.6rem 2rem;
-  color: white;
+  padding: 1.6rem 2rem !important;
+  color: white !important;
+}
 
+/* ===============================
+   CONTAINER (Prevents full transparency on Vercel)
+================================ */
+.swal2-container {
+  background: rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(25px) !important;
+  -webkit-backdrop-filter: blur(25px) !important;
+}
 
+/* ===============================
+   BACKDROP (Fix for Vercel)
+================================ */
+.swal2-backdrop-show {
+  background: rgba(0, 0, 0, 0.7) !important;
+  backdrop-filter: blur(35px) !important;
+  -webkit-backdrop-filter: blur(35px) !important;
 }
 
 /* ===============================
    BUTTONS
 ================================ */
 .swal2-custom-confirm {
-  background: linear-gradient(90deg, #a855f7, #7e22ce);
-  border-radius: 9999px;
-  padding: .55rem 1.4rem;
-  font-weight: 600;
-  border: none;
-  color: white;
+  background: linear-gradient(90deg, #a855f7, #7e22ce) !important;
+  border-radius: 9999px !important;
+  padding: .55rem 1.4rem !important;
+  font-weight: 600 !important;
+  color: white !important;
+  border: none !important;
 }
 
 .swal2-custom-cancel {
-  background: transparent;
-  border-radius: 9999px;
-  padding: .5rem 1.3rem;
-  border: 1px solid rgba(255,255,255,0.15);
-  color: rgba(255,255,255,0.85);
+  background: transparent !important;
+  border-radius: 9999px !important;
+  padding: .5rem 1.3rem !important;
+  border: 1px solid rgba(255,255,255,0.15) !important;
+  color: rgba(255,255,255,0.85) !important;
 }
 
 /* ===============================
-   TEXT STYLES
+   TEXT FIX
 ================================ */
 .swal2-custom-title {
-  font-size: 1.35rem;
-  font-weight: 800;
+  font-size: 1.35rem !important;
+  font-weight: 800 !important;
 }
 
 .swal2-custom-content {
-  color: rgba(255,255,255,0.9);
-  font-size: .95rem;
+  color: rgba(255,255,255,0.9) !important;
+  font-size: .95rem !important;
 }
 
 /* ===============================
-   PURPLE SUCCESS TICK (Perfect Circle + Lines)
+   PURPLE SUCCESS TICK
 ================================ */
-
-/* Outer ring */
 .swal2-success .swal2-success-ring {
   border-color: #a855f7 !important;
 }
 
-/* Tick lines */
 .swal2-success-line-tip,
 .swal2-success-line-long {
   background-color: #a855f7 !important;
 }
 
-/* Remove green leftovers */
 .swal2-success-circular-line-left,
 .swal2-success-circular-line-right,
 .swal2-success-fix {
   background-color: transparent !important;
 }
 
-/* Fix broken circle edges */
 .swal2-success .swal2-success-circular-line-left,
 .swal2-success .swal2-success-circular-line-right {
   border-color: #a855f7 !important;
 }
-.swal2-backdrop {
-    
-    background-color: rgba(0, 0, 0, 0.65) !important; 
-    
-  
-    backdrop-filter: blur(100px);
-    -webkit-backdrop-filter: blur(100px); 
-}
 
-body.swal2-shown {
-    overflow-y: hidden !important; 
-    overflow: hidden !important; 
-}
-
+/* ===============================
+   MOBILE OPTIMIZATION
+================================ */
 @media (max-width: 640px) {
   .swal2-custom-popup {
-    padding: 1.2rem;
-    border-radius: 1rem;
+    padding: 1.2rem !important;
+    border-radius: 1rem !important;
   }
 }
-

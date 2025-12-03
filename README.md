@@ -726,7 +726,7 @@ Manhwa-AI/
 │   │       └── supabase_utils.py
 │   ├── requirements.txt
 │   ├── Dockerfile
-│   └── .env.example
+│   └── .env
 │
 ├── frontend/                # React Frontend
 │   ├── src/
@@ -738,6 +738,7 @@ Manhwa-AI/
 │   ├── public/
 │   ├── package.json
 │   └── vite.config.js
+│   └── .env
 │
 ├── .github/
 │   └── workflows/

@@ -14,6 +14,7 @@ const LandingPage = lazy(() => import("../pages/Landing"));
 const UploadPage = lazy(() => import("../pages/Upload"));
 const ContactPage = lazy(() => import("../pages/Contact"));
 const NotFoundPage = lazy(() => import("../pages/NotFound"));
+const LoginPage = lazy(() => import("../pages/Login"));
 
 // Layout Wrapper
 const Layout = ({ children }) => {
@@ -50,6 +51,7 @@ const Routing = () => {
         <Route path="/upload" element={<Layout><UploadPage/></Layout>} />
         <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
          <Route path="/docs" element={<Layout><DocumentationPage/></Layout>} />
+         <Route path="/login" element={<LoginPage />} />
 
 
 

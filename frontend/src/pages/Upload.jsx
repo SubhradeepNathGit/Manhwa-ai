@@ -353,33 +353,14 @@ const UploadPage = () => {
   }, []);
 
   return (
-    <main className="relative min-h-screen bg-gradient-to-br from-gray-950 via-black to-purple-950 text-white px-4 sm:px-6 lg:px-8 py-8 overflow-hidden">
+    <main className="relative min-h-screen text-white/60 px-4 sm:px-6 lg:px-8 py-8 overflow-hidden">
       {/* BACKGROUND */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-1/3 right-1/3 w-96 h-96 bg-purple-800/10 rounded-full blur-3xl animate-pulse" />
       </div>
 
-      {/* TITLE */}
-      <div className="relative max-w-6xl mx-auto text-center -mt-5 mb-8 sm:mb-12 lg:mb-16">
-        <div className="inline-flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
-          <img
-            src="/manhwa-logo.png"
-            alt="Manhwa Logo"
-            className="w-10 h-10 sm:w-10 sm:h-10 lg:w-16 lg:h-16 object-contain"
-          />
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-purple-400 via-purple-500 to-purple-600">
-            マンファ.ai
-          </h1>
-        </div>
-        <p className="text-gray-300 text-base sm:text-xs lg:text-xl font-light tracking-wide px-4">
-          Turn Your Manga into fully-animated YouTube videos with AI
-        </p>
-        <div className="flex items-center justify-center gap-2 sm:gap-3 mt-3 sm:mt-4 text-xs sm:text-xs text-yellow-400 px-4">
-          <Zap className="w-3 h-3 sm:w-3 sm:h-3" />
-          <span>Ultra-fast PDF to dynamic Youtube-ready videos</span>
-        </div>
-      </div>
+
 
       {/* ========================== UPLOAD + SETTINGS ========================== */}
       <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12 max-w-6xl mx-auto relative">
@@ -396,13 +377,13 @@ const UploadPage = () => {
               setIsDragging(false);
             }}
             onClick={() => fileInputRef.current?.click()}
-            className={`relative border-2 border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-8 lg:p-10 transition-all duration-300 backdrop-blur-sm ${
+            className={`relative border-2 border-dotted rounded-xl sm:rounded-2xl p-6 sm:p-8 lg:p-10 transition-all duration-300 backdrop-blur-sm ${
               isDragging
                 ? "border-purple-400 bg-purple-500/10 scale-[1.02]"
                 : file
                 ? "border-purple-500 bg-purple-500/5"
                 : "border-gray-700 bg-gray-900/30"
-            } hover:border-purple-400 cursor-pointer group`}
+            } hover:border-purple-900 cursor-pointer group`}
           >
             <input
               ref={fileInputRef}

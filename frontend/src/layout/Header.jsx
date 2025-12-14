@@ -1,7 +1,16 @@
 // src/components/layout/Navbar.jsx
 import React, { useState, useEffect, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X, Video, Home, Mail, LogIn, LogOut, BookOpen } from "lucide-react"; // Added BookOpen icon
+import {
+  Menu,
+  X,
+  Video,
+  Mail,
+  LogIn,
+  LogOut,
+  BookOpen,
+  Home,
+} from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
 const Navbar = () => {
@@ -11,270 +20,226 @@ const Navbar = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
-  // Handle scroll effect
+  /* ---------------- Scroll Effect ---------------- */
   useEffect(() => {
-    const handleScroll = () => {
-      setScrolled(window.scrollY > 20);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-    return () => window.removeEventListener("scroll", handleScroll);
+    const onScroll = () => setScrolled(window.scrollY > 20);
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // Close mobile menu when route changes
+  /* ---------------- Close Menu on Route Change ---------------- */
   useEffect(() => {
     setIsOpen(false);
   }, [location.pathname]);
 
-  // Lock scroll when menu is open
+  /* ---------------- Lock Body Scroll (Mobile) ---------------- */
   useEffect(() => {
     if (isOpen) {
-      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      const scrollbarWidth =
+        window.innerWidth - document.documentElement.clientWidth;
       document.body.style.overflow = "hidden";
       document.body.style.paddingRight = `${scrollbarWidth}px`;
     } else {
-      document.body.style.overflow = "unset";
-      document.body.style.paddingRight = "0px";
+      document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
     }
+
     return () => {
-      document.body.style.overflow = "unset";
-      document.body.style.paddingRight = "0px";
+      document.body.style.overflow = "";
+      document.body.style.paddingRight = "";
     };
   }, [isOpen]);
 
-  // Handle Logout
-  const handleLogout = async () => {
-    // 1. Clear the saved story data
-    sessionStorage.removeItem("pendingStory");
-    sessionStorage.removeItem("pendingFileName");
-    console.log("🧹 Clearing session data...");
-    // 2. Perform Supabase Logout
-    await logout();
-    
-    // 3. Close menu and redirect
-    setIsOpen(false);
-    navigate("/"); 
-  };
-
-  // Close menu with ESC
+  /* ---------------- ESC + Resize Handling ---------------- */
   const handleKeyDown = useCallback(
     (e) => {
-      if (e.key === "Escape" && isOpen) {
-        setIsOpen(false);
-      }
+      if (e.key === "Escape" && isOpen) setIsOpen(false);
     },
     [isOpen]
   );
 
   useEffect(() => {
-    window.addEventListener("keydown", handleKeyDown);
     const handleResize = () => {
-      if (window.innerWidth >= 768 && isOpen) {
-        setIsOpen(false);
-      }
+      if (window.innerWidth >= 1024 && isOpen) setIsOpen(false);
     };
+
+    window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("resize", handleResize);
+
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
       window.removeEventListener("resize", handleResize);
     };
   }, [handleKeyDown, isOpen]);
 
-  // Navigation links - Added Docs here
+  /* ---------------- Logout ---------------- */
+  const handleLogout = async () => {
+    sessionStorage.removeItem("pendingStory");
+    sessionStorage.removeItem("pendingFileName");
+    await logout();
+    setIsOpen(false);
+    navigate("/");
+  };
+
+  /* ---------------- Navigation ---------------- */
   const navLinks = [
+    { name: "Home", path: "/", icon: Home },
     { name: "Upload", path: "/upload", icon: Video },
-    { name: "Docs", path: "/docs", icon: BookOpen }, // Added Docs here
+    { name: "Docs", path: "/docs", icon: BookOpen },
     { name: "Contact", path: "/contact", icon: Mail },
   ];
 
-  const isActive = (path) => {
-    if (path === "/") {
-      return location.pathname === "/";
-    }
-    return location.pathname.startsWith(path);
-  };
+  const isActive = (path) =>
+    path === "/" ? location.pathname === "/" : location.pathname.startsWith(path);
 
-  const handleNavigation = (path) => {
-    setIsOpen(false);
-    navigate(path);
-  };
-  
   return (
     <>
-      {/* Navbar */}
+      {/* ================= NAVBAR ================= */}
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        className={`fixed inset-x-0 top-0 z-50 transition-all duration-300 ${
           scrolled
-            ? "bg-black/70 bg-opacity-80 backdrop-blur-md shadow-lg"
-            : "bg-black"
+            ? "bg-black/30 backdrop-blur-md shadow-lg"
+            : "bg-black/10"
         }`}
       >
-        <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16 sm:h-20">
-            
-            {/* Logo */}
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-16 sm:h-20 items-center justify-between">
+            {/* -------- Logo -------- */}
             <Link
               to="/"
-              className="flex items-center gap-1.5 sm:gap-2 text-white font-bold text-lg sm:text-xl tracking-tight hover:opacity-80 transition-opacity duration-200 flex-shrink-0"
+              className="flex items-center gap-2 text-white font-bold text-lg sm:text-xl shrink-0"
             >
               <img
                 src="/manhwa-logo.png"
                 alt="Manhwa Logo"
-                className="w-8 h-8 sm:w-10 sm:h-10 object-contain animate-spin"
+                className="h-8 w-8 sm:h-10 sm:w-10 object-contain animate-spin"
               />
-              <span className="hidden xs:inline sm:inline">MANHWA AI</span>
-              <span className="xs:hidden sm:hidden">MANHWA AI</span>
+              <span className="hidden sm:inline">MANHWA AI</span>
             </Link>
 
-            {/* Desktop Nav - Now includes Docs */}
-            <div className="hidden md:flex items-center space-x-6 lg:space-x-8">
+            {/* -------- Desktop Nav -------- */}
+            <div className="hidden lg:flex items-center gap-8">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
-                  className="relative text-gray-300 hover:text-white font-medium transition-colors duration-200 group text-sm lg:text-base flex items-center gap-2"
+                  className="relative text-gray-300 hover:text-white transition font-medium"
                 >
                   {link.name}
                   <span
-                    className={`absolute left-0 -bottom-1 h-0.5 bg-purple-600 transition-all duration-300 ${
-                      isActive(link.path) ? "w-full" : "w-0 group-hover:w-full"
+                    className={`absolute left-0 -bottom-1 h-0.5 bg-purple-600 transition-all ${
+                      isActive(link.path)
+                        ? "w-full"
+                        : "w-0 group-hover:w-full"
                     }`}
                   />
                 </Link>
               ))}
             </div>
 
-            {/* Desktop Right Side - ONLY AUTH now */}
-            <div className="hidden md:flex items-center gap-4">
-                
-                {/* AUTH LOGIC */}
-                {user ? (
-                    <div className="flex items-center gap-3">
-                        <div className="flex flex-col items-end">
-                            <span className="text-xs text-gray-400">Logged in as</span>
-                            <span className="text-sm font-bold text-white max-w-[120px] truncate">
-                                {user.email?.split('@')[0]}
-                            </span>
-                        </div>
-                        <button
-                            onClick={handleLogout}
-                            title="Logout"
-                            className="p-2 bg-white/10 hover:bg-red-500/20 hover:text-red-400 rounded-full transition-all"
-                        >
-                            <LogOut className="w-5 h-5" />
-                        </button>
-                    </div>
-                ) : (
-                    <button
-                        onClick={() => navigate("/login")}
-                        className="px-5 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-full transition-all duration-200 hover:shadow-lg hover:shadow-purple-500/30 active:scale-95 text-sm flex items-center gap-2"
-                    >
-                        <LogIn className="w-4 h-4" />
-                        Login
-                    </button>
-                )}
+            {/* -------- Desktop Auth -------- */}
+            <div className="hidden lg:flex items-center gap-4">
+              {user ? (
+                <div className="flex items-center gap-3">
+                  <div className="text-right">
+                    <p className="text-xs text-gray-400">Logged in as</p>
+                    <p className="text-sm font-semibold text-white max-w-[140px] truncate">
+                      {user.email?.split("@")[0]}
+                    </p>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="p-2 rounded-full bg-white/10 hover:bg-red-500/20 hover:text-red-400 transition"
+                  >
+                    <LogOut className="w-5 h-5" />
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => navigate("/login")}
+                  className="px-5 py-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold hover:shadow-lg transition"
+                >
+                  SIGN IN
+                </button>
+              )}
             </div>
 
-            {/* Mobile Menu Toggle */}
+            {/* -------- Mobile Toggle -------- */}
             <button
               onClick={() => setIsOpen(!isOpen)}
-              aria-label={isOpen ? "Close menu" : "Open menu"}
-              aria-expanded={isOpen}
-              className="md:hidden p-2 text-white hover:bg-white/10 rounded-lg transition-colors duration-200 flex-shrink-0"
+              className="lg:hidden p-2 rounded-lg text-white hover:bg-white/10 transition"
             >
-              {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {isOpen ? <X /> : <Menu />}
             </button>
           </div>
         </div>
       </nav>
 
-      {/* Mobile Menu */}
+      {/* ================= MOBILE MENU ================= */}
       {isOpen && (
         <>
-          {/* Overlay */}
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 md:hidden"
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
             onClick={() => setIsOpen(false)}
-            aria-hidden="true"
-            style={{ touchAction: "none" }}
           />
 
-          {/* Sidebar */}
-          <aside
-            className="fixed top-0 right-0 bottom-0 w-full xs:w-80 sm:w-72 bg-gray-900/95 backdrop-blur-xl z-50 p-4 sm:p-6 flex flex-col shadow-2xl md:hidden border-l border-white/10"
-          >
+          <aside className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-xs sm:max-w-sm bg-gray-900/95 backdrop-blur-xl border-l border-white/10 p-6 flex flex-col lg:hidden">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-2">
-                <img
-                  src="/manhwa-logo.png"
-                  alt="Manhwa Logo"
-                  className="w-10 h-10 object-contain"
-                />
-                <span className="text-white font-bold text-lg">MANHWA AI</span>
+                <img src="/manhwa-logo.png" className="w-10 h-10" />
+                <span className="font-bold text-white">MANHWA AI</span>
               </div>
-
-              <button
-                onClick={() => setIsOpen(false)}
-                aria-label="Close menu"
-                className="p-2 text-white hover:bg-white/10 rounded-lg transition-colors"
-              >
-                <X className="w-6 h-6" />
+              <button onClick={() => setIsOpen(false)}>
+                <X className="text-white" />
               </button>
             </div>
 
-            {/* Mobile User Info (If Logged In) */}
+            {/* User */}
             {user && (
-                <div className="mb-6 p-4 bg-white/5 rounded-xl border border-white/10 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-lg">
-                        {user.email?.[0].toUpperCase()}
-                    </div>
-                    <div className="overflow-hidden">
-                        <p className="text-xs text-gray-400 uppercase tracking-wider">Welcome</p>
-                        <p className="text-sm font-semibold text-white truncate">{user.email}</p>
-                    </div>
-                </div>
+              <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10">
+                <p className="text-sm font-semibold text-white truncate">
+                  {user.email}
+                </p>
+              </div>
             )}
 
-            {/* Links - Now includes Docs */}
-            <nav className="flex flex-col space-y-2 flex-1 overflow-y-auto">
+            {/* Links */}
+            <nav className="flex-1 space-y-2 overflow-y-auto">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}
                   to={link.path}
                   onClick={() => setIsOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 text-base sm:text-lg font-medium rounded-lg transition-colors duration-200 ${
+                  className={`flex items-center gap-3 px-4 py-3 rounded-lg transition ${
                     isActive(link.path)
                       ? "bg-purple-600 text-white"
-                      : "text-gray-300 hover:text-white hover:bg-white/5"
+                      : "text-gray-300 hover:bg-white/5"
                   }`}
                 >
-                  <link.icon className="w-5 h-5 flex-shrink-0" />
-                  <span>{link.name}</span>
+                  <link.icon className="w-5 h-5" />
+                  {link.name}
                 </Link>
               ))}
             </nav>
 
-            {/* Mobile Auth Button */}
-            <div className="mt-auto pt-4 border-t border-gray-800 space-y-3">
+            {/* Auth */}
+            <div className="pt-4 border-t border-gray-800">
               {user ? (
-                  <button
-                    onClick={handleLogout}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold rounded-lg transition-colors border border-red-500/20"
-                  >
-                    <LogOut className="w-5 h-5" />
-                    Logout
-                  </button>
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center justify-center gap-2 py-3 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition"
+                >
+                  <LogOut className="w-5 h-5" />
+                  Logout
+                </button>
               ) : (
-                  <button
-                    onClick={() => {
-                        setIsOpen(false);
-                        navigate("/login");
-                    }}
-                    className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold rounded-lg transition-all shadow-lg shadow-purple-500/20"
-                  >
-                    <LogIn className="w-5 h-5" />
-                    Login / Sign Up
-                  </button>
+                <button
+                  onClick={() => navigate("/login")}
+                  className="w-full py-3 rounded-lg bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold"
+                >
+                  Login / Sign Up
+                </button>
               )}
             </div>
           </aside>
@@ -282,7 +247,7 @@ const Navbar = () => {
       )}
 
       {/* Spacer */}
-      <div className="h-16 sm:h-20" aria-hidden="true" />
+      <div className="h-16 sm:h-20" />
     </>
   );
 };

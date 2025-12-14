@@ -95,7 +95,7 @@ const Login = () => {
 
   /* ---------------- UI ---------------- */
   return (
-    <div className="fixed inset-0 bg-black overflow-hidden flex items-center justify-center">
+    <div className="fixed inset-0 overflow-hidden flex items-center justify-center">
       {/* Background Energy */}
       <div
         ref={glowTop}

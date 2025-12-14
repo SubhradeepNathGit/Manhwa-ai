@@ -1,215 +1,228 @@
 import { ArrowRight } from "lucide-react";
 import { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 
 const HeroSection = ({ heroRef: propHeroRef }) => {
   const localHeroRef = useRef(null);
   const heroRef = propHeroRef || localHeroRef;
+  const cursorGlowRef = useRef(null);
+  const typewriterRef = useRef(null);
+  const navigate = useNavigate();
 
+  /* ---------------- GSAP LOAD + ANIMATIONS ---------------- */
   useEffect(() => {
-    // Dynamically load GSAP and ScrollTrigger
+    let ctx;
+
     const loadGSAP = async () => {
-      const gsapModule = await import('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js');
-      const scrollTriggerModule = await import('https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js');
-      
+      const gsapModule = await import(
+        "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"
+      );
+      const scrollTriggerModule = await import(
+        "https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"
+      );
+
       const gsap = gsapModule.default || gsapModule;
-      const ScrollTrigger = scrollTriggerModule.default || scrollTriggerModule.ScrollTrigger;
-      
+      const ScrollTrigger =
+        scrollTriggerModule.default || scrollTriggerModule.ScrollTrigger;
+
       gsap.registerPlugin(ScrollTrigger);
 
-      // GSAP ScrollTrigger animations
-      const ctx = gsap.context(() => {
-        // Fade and scale hero section on scroll
+      ctx = gsap.context(() => {
+        /* --- SCROLL PARALLAX --- */
         gsap.to(heroRef.current, {
           scrollTrigger: {
             trigger: heroRef.current,
             start: "top top",
             end: "bottom top",
-            scrub: 1,
+            scrub: 0.6,
           },
-          opacity: 0.3,
-          scale: 0.95,
-          y: -50,
+          opacity: 0.35,
+          scale: 0.96,
+          y: -40,
         });
 
-        // Parallax effect for badge
         gsap.to(".badge", {
           scrollTrigger: {
             trigger: heroRef.current,
             start: "top top",
             end: "bottom top",
-            scrub: 2,
+            scrub: 0.6,
           },
-          y: 100,
+          y: 80,
           opacity: 0,
         });
 
-        // Parallax effect for title
         gsap.to(".hero-title", {
           scrollTrigger: {
             trigger: heroRef.current,
             start: "top top",
             end: "bottom top",
-            scrub: 1.5,
-          },
-          y: 150,
-        });
-
-        // Parallax effect for subtitle
-        gsap.to(".hero-subtitle", {
-          scrollTrigger: {
-            trigger: heroRef.current,
-            start: "top top",
-            end: "bottom top",
-            scrub: 1.2,
+            scrub: 0.6,
           },
           y: 120,
         });
 
-        // Parallax effect for description
         gsap.to(".hero-description", {
           scrollTrigger: {
             trigger: heroRef.current,
             start: "top top",
             end: "bottom top",
-            scrub: 1,
+            scrub: 0.6,
           },
-          y: 80,
+          y: 70,
+          opacity: 0,
         });
 
-        // Button stays longer
         gsap.to(".hero-button", {
           scrollTrigger: {
             trigger: heroRef.current,
             start: "top top",
             end: "bottom top",
-            scrub: 0.8,
+            scrub: 0.5,
           },
-          y: 60,
+          y: 50,
+          opacity: 0,
+        });
+
+        gsap.to(".hero-subtitle", {
+          scrollTrigger: {
+            trigger: heroRef.current,
+            start: "top top",
+            end: "bottom top",
+            scrub: 0.6,
+          },
+          y: 90,
           opacity: 0,
         });
       });
-
-      return () => ctx.revert();
     };
 
     loadGSAP();
+    return () => ctx && ctx.revert();
   }, []);
 
-  // Framer Motion variants
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.15,
-        delayChildren: 0.2,
-      }
-    }
-  };
+  /* ---------------- CURSOR GLOW ---------------- */
+  useEffect(() => {
+    const glow = cursorGlowRef.current;
+    if (!glow) return;
 
-  const fadeInUpVariants = {
-    hidden: { 
-      opacity: 0, 
-      y: 40,
-    },
+    const move = (e) => {
+      glow.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
+    };
+
+    window.addEventListener("mousemove", move);
+    return () => window.removeEventListener("mousemove", move);
+  }, []);
+
+  /* ---------------- FRAMER VARIANTS ---------------- */
+  const fadeUp = {
+    hidden: { opacity: 0, y: 40 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: {
-        duration: 0.8,
-        ease: [0.25, 0.46, 0.45, 0.94]
-      }
-    }
+      transition: { duration: 0.9, ease: [0.25, 0.46, 0.45, 0.94] },
+    },
   };
 
-  const titleVariants = {
-    hidden: { 
-      opacity: 0, 
-      scale: 0.9,
-      y: 30,
-    },
+  const titleVariant = {
+    hidden: { opacity: 0, scale: 0.9, y: 30 },
     visible: {
       opacity: 1,
-      y: 0,
       scale: 1,
-      transition: {
-        duration: 1,
-        ease: [0.25, 0.46, 0.45, 0.94]
-      }
-    }
+      y: 0,
+      transition: { duration: 1.1, ease: [0.25, 0.46, 0.45, 0.94] },
+    },
   };
 
   return (
-    <section ref={heroRef} className="relative z-10 pt-30 pb-20 px-4">
-      <div className="max-w-7xl mx-auto">
-        <motion.div
-          className="text-center mb-16"
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
-        >
-          <motion.div variants={fadeInUpVariants} className="badge">
-            <span className="text-yellow-400 text-sm font-semibold inline-block">
+    <section
+      ref={heroRef}
+      className="relative z-10 pt-32 pb-24 px-4 overflow-hidden"
+    >
+      {/* CURSOR GLOW */}
+      <div
+        ref={cursorGlowRef}
+        className="
+          pointer-events-none fixed top-0 left-0
+          w-[300px] h-[300px]
+          -translate-x-1/2 -translate-y-1/2
+          rounded-full bg-purple-500/20
+          blur-[120px] mix-blend-screen
+          z-0 transition-transform duration-75
+        "
+      />
+
+      <div className="max-w-7xl mx-auto relative z-10">
+        <motion.div initial="hidden" animate="visible" className="text-center">
+          <motion.div variants={fadeUp} className="badge mb-3">
+            <span className="text-yellow-400 text-sm font-semibold">
               AI-Powered Animation
             </span>
           </motion.div>
 
           <motion.h1
-            variants={titleVariants}
-            className="hero-title text-6xl sm:text-7xl md:text-8xl lg:text-9xl font-bold mb-6 bg-gradient-to-r from-purple-500 via-purple-800 to-indigo-800 bg-clip-text text-transparent leading-tight"
+            variants={titleVariant}
+            className="
+              hero-title text-6xl sm:text-7xl md:text-8xl lg:text-9xl
+              font-bold mb-6 bg-gradient-to-r
+              from-purple-500 via-purple-700 to-indigo-800
+              bg-clip-text text-transparent
+            "
           >
             マンファ AI
           </motion.h1>
 
+          {/* SUBTITLE TEXT */}
           <motion.p
-            variants={fadeInUpVariants}
-            className="hero-subtitle text-xl sm:text-2xl md:text-3xl mb-5 -mt-2 text-gray-500 font-semibold"
+            variants={fadeUp}
+            className="
+              hero-subtitle text-xl sm:text-2xl md:text-3xl
+              mb-6  text-gray-500/50 font-semibold
+            "
           >
             Transform Manga into Mesmerizing Anime
           </motion.p>
 
           <motion.p
-            variants={fadeInUpVariants}
-            className="hero-description text-lg text-gray-400 max-w-4xl mt-5 mx-auto mb-12 leading-relaxed"
+            variants={fadeUp}
+            className="
+              hero-description text-lg text-gray-400
+              max-w-4xl mx-auto mb-12 leading-relaxed
+            "
           >
-            Experience the future of storytelling-Turn your favorite manga PDF/DOCX files into fully-animated YouTube videos with AI
+            Experience the future of storytelling — turn your favorite manga
+            PDF files into fully-animated YouTube videos with AI.
           </motion.p>
 
-          <motion.div
-            variants={fadeInUpVariants}
-            className="flex flex-col sm:flex-row gap-6 justify-center items-center hero-button"
-          >
-            <motion.a
-              href="/upload"
-              className="group relative px-10 py-5 bg-gradient-to-r from-purple-500 via-purple-700 to-indigo-500 border border-purple-400 rounded-full text-lg font-semibold overflow-hidden transition-all duration-300 cursor-pointer"
-              whileHover={{ 
-                scale: 1.05,
-                boxShadow: "0 0 25px rgba(168, 85, 247, 0.5)"
-              }}
-              whileTap={{ scale: 0.98 }}
-              transition={{ type: "spring", stiffness: 400, damping: 17 }}
+          {/* CTA BUTTON */}
+          <motion.div variants={fadeUp} className="hero-button">
+            <motion.button
+              onClick={() => navigate("/upload")}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.96 }}
+              className="
+                relative px-12 py-5 rounded-full text-lg font-semibold
+                bg-white/10 backdrop-blur-xl
+                border border-white/30
+                text-white overflow-hidden group
+              "
             >
-              <span className="relative z-10 flex items-center">
-                Start Creating{" "}
-                <motion.span
-                  className="ml-2"
-                  animate={{ x: [0, 4, 0] }}
-                  transition={{ 
-                    duration: 1.5, 
-                    repeat: Infinity,
-                    ease: "easeInOut"
-                  }}
-                >
-                  <ArrowRight />
-                </motion.span>
+              <span
+                className="
+                  absolute inset-0 bg-gradient-to-r
+                  from-purple-500/40 via-purple-600/40 to-indigo-500/40
+                  opacity-0 group-hover:opacity-100
+                  transition-opacity duration-300
+                "
+              />
+              <span className="relative z-10 flex items-center gap-2">
+                Get Started
+                <ArrowRight className="transition-transform group-hover:translate-x-1" />
               </span>
-            </motion.a>
-            
+            </motion.button>
           </motion.div>
-          
         </motion.div>
-        
       </div>
     </section>
   );

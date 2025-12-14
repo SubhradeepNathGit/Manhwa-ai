@@ -186,7 +186,7 @@ const DocumentationPage = () => {
   }, []);
 
   return (
-    <main className="relative min-h-screen bg-gradient-to-br from-gray-950 via-black to-purple-950 text-white overflow-hidden">
+    <main className="relative min-h-screen text-white overflow-hidden">
       {/* BACKGROUND ORBS */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-64 h-64 sm:w-96 sm:h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse" />

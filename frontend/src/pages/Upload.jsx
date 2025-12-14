@@ -353,7 +353,7 @@ const UploadPage = () => {
   }, []);
 
   return (
-    <main className="relative min-h-screen bg-gradient-to-br from-gray-950 via-black to-purple-950 text-white px-4 sm:px-6 lg:px-8 py-8 overflow-hidden">
+    <main className="relative min-h-screen text-white/60 px-4 sm:px-6 lg:px-8 py-8 overflow-hidden">
       {/* BACKGROUND */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse" />
@@ -377,13 +377,13 @@ const UploadPage = () => {
               setIsDragging(false);
             }}
             onClick={() => fileInputRef.current?.click()}
-            className={`relative border-2 border-dashed rounded-xl sm:rounded-2xl p-6 sm:p-8 lg:p-10 transition-all duration-300 backdrop-blur-sm ${
+            className={`relative border-2 border-dotted rounded-xl sm:rounded-2xl p-6 sm:p-8 lg:p-10 transition-all duration-300 backdrop-blur-sm ${
               isDragging
                 ? "border-purple-400 bg-purple-500/10 scale-[1.02]"
                 : file
                 ? "border-purple-500 bg-purple-500/5"
                 : "border-gray-700 bg-gray-900/30"
-            } hover:border-purple-400 cursor-pointer group`}
+            } hover:border-purple-900 cursor-pointer group`}
           >
             <input
               ref={fileInputRef}

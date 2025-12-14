@@ -36,6 +36,7 @@ const ManhwaAIHome = () => {
       <AnimatedBackground />
 
       <HeroSection heroRef={heroRef} />
+      <AboutSection aboutRef={aboutRef} />
       <VideoCarousel
         videos={videos}
         currentSlide={currentSlide}
@@ -43,7 +44,7 @@ const ManhwaAIHome = () => {
       />
       <StatsSection />
       <FeaturesSection featuresRef={featuresRef} />
-      <AboutSection aboutRef={aboutRef} />
+      
       <PricingSection pricingRef={pricingRef} />
       <CTASection />
     </div>

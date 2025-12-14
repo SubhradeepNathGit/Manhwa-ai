@@ -78,7 +78,7 @@ const StatsSection = () => {
                     transition-all duration-500 ease-out
                     ${
                       done[index]
-                        ? "scale-130 text-white/90 drop-shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+                        ? "scale-130 text-yellow-300/80 drop-shadow-[0_0_20px_rgba(255,255,255,0.15)]"
                         : "scale-110 text-gray-700/40"
                     }
                   `}

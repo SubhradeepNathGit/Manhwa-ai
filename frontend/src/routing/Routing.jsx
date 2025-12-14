@@ -10,7 +10,7 @@ import DocumentationPage from "../pages/Documentation";
 
 
 // Lazy load pages for better performance
-const LandingPage = lazy(() => import("../pages/Landing"));
+const HomePage = lazy(() => import("../pages/Home"));
 const UploadPage = lazy(() => import("../pages/Upload"));
 const ContactPage = lazy(() => import("../pages/Contact"));
 const NotFoundPage = lazy(() => import("../pages/NotFound"));
@@ -21,7 +21,7 @@ const Layout = ({ children }) => {
   const location = useLocation();
 
   // Routes where we HIDE Navbar + Footer
-  const hideLayoutRoutes = ["/login", "/signup", "/404", "/"];
+  const hideLayoutRoutes = ["/login", "/signup", "/404"];
   const hideLayout = hideLayoutRoutes.includes(location.pathname);
 
   return (
@@ -47,11 +47,11 @@ const Routing = () => {
 
       <Routes>
         {/* Pages wrapped with Layout */}
-        <Route path="/" element={<Layout><LandingPage /></Layout>} />
+        <Route path="/" element={<Layout><HomePage/></Layout>} />
         <Route path="/upload" element={<Layout><UploadPage/></Layout>} />
         <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
-         <Route path="/docs" element={<Layout><DocumentationPage/></Layout>} />
-         <Route path="/login" element={<LoginPage />} />
+        <Route path="/docs" element={<Layout><DocumentationPage/></Layout>} />
+        <Route path="/login" element={<LoginPage />} />
 
 
 

@@ -6,11 +6,9 @@ import { useNavigate } from "react-router-dom";
 const HeroSection = ({ heroRef: propHeroRef }) => {
   const localHeroRef = useRef(null);
   const heroRef = propHeroRef || localHeroRef;
-  const cursorGlowRef = useRef(null);
-  const typewriterRef = useRef(null);
   const navigate = useNavigate();
 
-  /* ---------------- GSAP LOAD + ANIMATIONS ---------------- */
+  /* ---------------- GSAP LOAD + SCROLL ANIMATIONS ---------------- */
   useEffect(() => {
     let ctx;
 
@@ -29,7 +27,6 @@ const HeroSection = ({ heroRef: propHeroRef }) => {
       gsap.registerPlugin(ScrollTrigger);
 
       ctx = gsap.context(() => {
-        /* --- SCROLL PARALLAX --- */
         gsap.to(heroRef.current, {
           scrollTrigger: {
             trigger: heroRef.current,
@@ -63,6 +60,17 @@ const HeroSection = ({ heroRef: propHeroRef }) => {
           y: 120,
         });
 
+        gsap.to(".hero-subtitle", {
+          scrollTrigger: {
+            trigger: heroRef.current,
+            start: "top top",
+            end: "bottom top",
+            scrub: 0.6,
+          },
+          y: 90,
+          opacity: 0,
+        });
+
         gsap.to(".hero-description", {
           scrollTrigger: {
             trigger: heroRef.current,
@@ -84,35 +92,11 @@ const HeroSection = ({ heroRef: propHeroRef }) => {
           y: 50,
           opacity: 0,
         });
-
-        gsap.to(".hero-subtitle", {
-          scrollTrigger: {
-            trigger: heroRef.current,
-            start: "top top",
-            end: "bottom top",
-            scrub: 0.6,
-          },
-          y: 90,
-          opacity: 0,
-        });
       });
     };
 
     loadGSAP();
     return () => ctx && ctx.revert();
-  }, []);
-
-  /* ---------------- CURSOR GLOW ---------------- */
-  useEffect(() => {
-    const glow = cursorGlowRef.current;
-    if (!glow) return;
-
-    const move = (e) => {
-      glow.style.transform = `translate(${e.clientX}px, ${e.clientY}px)`;
-    };
-
-    window.addEventListener("mousemove", move);
-    return () => window.removeEventListener("mousemove", move);
   }, []);
 
   /* ---------------- FRAMER VARIANTS ---------------- */
@@ -140,19 +124,6 @@ const HeroSection = ({ heroRef: propHeroRef }) => {
       ref={heroRef}
       className="relative z-10 pt-32 pb-24 px-4 overflow-hidden"
     >
-      {/* CURSOR GLOW */}
-      <div
-        ref={cursorGlowRef}
-        className="
-          pointer-events-none fixed top-0 left-0
-          w-[300px] h-[300px]
-          -translate-x-1/2 -translate-y-1/2
-          rounded-full bg-purple-500/20
-          blur-[120px] mix-blend-screen
-          z-0 transition-transform duration-75
-        "
-      />
-
       <div className="max-w-7xl mx-auto relative z-10">
         <motion.div initial="hidden" animate="visible" className="text-center">
           <motion.div variants={fadeUp} className="badge mb-3">
@@ -173,12 +144,11 @@ const HeroSection = ({ heroRef: propHeroRef }) => {
             マンファ AI
           </motion.h1>
 
-          {/* SUBTITLE TEXT */}
           <motion.p
             variants={fadeUp}
             className="
               hero-subtitle text-xl sm:text-2xl md:text-3xl
-              mb-6  text-gray-500/50 font-semibold
+              mb-6 text-gray-500/50 font-semibold
             "
           >
             Transform Manga into Mesmerizing Anime
@@ -195,7 +165,6 @@ const HeroSection = ({ heroRef: propHeroRef }) => {
             PDF files into fully-animated YouTube videos with AI.
           </motion.p>
 
-          {/* CTA BUTTON */}
           <motion.div variants={fadeUp} className="hero-button">
             <motion.button
               onClick={() => navigate("/upload")}

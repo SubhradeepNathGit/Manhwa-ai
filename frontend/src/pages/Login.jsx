@@ -47,7 +47,7 @@ const Login = () => {
       Swal.fire({
         icon: 'success',
         title: 'Code Sent!',
-        text: 'Please check your email for the 6-digit code.',
+        text: 'Please check your email for the 8-digit code.',
         background: '#1a1a1a',
         color: '#fff',
         timer: 3000,
@@ -159,7 +159,7 @@ const Login = () => {
                   maxLength={8}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  placeholder="123456"
+                  placeholder="12345678"
                   className="w-full rounded-xl bg-black/40 border border-white/10 py-3 pl-12 pr-4 text-white placeholder-gray-500 text-lg tracking-widest font-mono focus:outline-none focus:border-violet-500 focus:ring-2 focus:ring-violet-500/30"
                 />
               </div>

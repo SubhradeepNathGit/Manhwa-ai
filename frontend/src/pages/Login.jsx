@@ -15,7 +15,8 @@ const Login = () => {
   const [otp, setOtp] = useState("");
   const [error, setError] = useState("");
   
-  const from = location.state?.from || "/";
+  // Get the previous location from state, default to /uploads
+  const from = location.state?.from?.pathname || "/uploads";
   const otpInputs = useRef([]);
 
   /* ---------------- Send OTP ---------------- */
@@ -24,6 +25,13 @@ const Login = () => {
     
     if (!email) {
       setError("Please enter your email");
+      return;
+    }
+
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      setError("Please enter a valid email address");
       return;
     }
 
@@ -46,11 +54,12 @@ const Login = () => {
         icon: 'success',
         title: 'Code Sent!',
         text: 'Please check your email (and spam folder) for the 6-digit code.',
-        background: 'transparent',
+        background: 'rgba(26, 26, 26, 0.95)',
         color: '#fff',
         timer: 4000,
         showConfirmButton: false,
-        iconColor: '#a78bfa'
+        iconColor: '#a78bfa',
+        backdrop: 'rgba(0,0,0,0.4)'
       });
     } catch (err) {
       console.error("Error details:", err);
@@ -88,20 +97,23 @@ const Login = () => {
           icon: 'success',
           title: 'Success!',
           text: 'Login successful. Redirecting...',
-          background: '#1a1a1a',
+          background: 'rgba(26, 26, 26, 0.95)',
           color: '#fff',
-          timer: 2000,
+          timer: 1500,
           showConfirmButton: false,
-          iconColor: '#a78bfa'
+          iconColor: '#a78bfa',
+          backdrop: 'rgba(0,0,0,0.4)'
         });
 
         setTimeout(() => {
           navigate(from, { replace: true });
-        }, 2000);
+        }, 1500);
       }
     } catch (err) {
       console.error("Verification error:", err);
       setError("Invalid code. Please try again.");
+      setOtp(""); // Clear OTP on error
+      otpInputs.current[0]?.focus(); // Focus first input
     } finally {
       setLoading(false);
     }
@@ -111,6 +123,7 @@ const Login = () => {
   const handleGoogleSignIn = async () => {
     try {
       setLoading(true);
+      setError("");
       console.log("Initiating Google Sign In...");
       
       const { data, error } = await signInWithGoogle();
@@ -121,15 +134,21 @@ const Login = () => {
       }
 
       console.log("Google Sign In Response:", data);
+      
+      // Google auth will handle redirect via callback
+      // The redirect URL should be set in your Supabase config
     } catch (err) {
       console.error("Error:", err);
-      setError("Failed to sign in with Google");
+      setError(err.message || "Failed to sign in with Google");
       setLoading(false);
     }
   };
 
   /* ---------------- OTP Input Handlers ---------------- */
   const handleOtpChange = (index, value) => {
+    // Only allow numbers
+    if (value && !/^\d$/.test(value)) return;
+    
     if (value.length > 1) value = value.slice(0, 1);
     
     const newOtp = otp.split('');
@@ -160,16 +179,25 @@ const Login = () => {
     if (e.key === 'Enter') {
       if (step === 'email') {
         handleSendOtp();
-      } else {
+      } else if (otp.length === 6) {
         handleVerifyOtp();
       }
     }
   };
 
+  // Auto-focus first OTP input when step changes
+  useEffect(() => {
+    if (step === 'otp') {
+      setTimeout(() => {
+        otpInputs.current[0]?.focus();
+      }, 100);
+    }
+  }, [step]);
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
       {/* Animated Background */}
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
         <div className="absolute inset-0" style={{
           backgroundImage: `radial-gradient(circle at 20% 50%, rgba(147, 51, 234, 0.3) 0%, transparent 50%),
                            radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.3) 0%, transparent 50%),
@@ -191,12 +219,12 @@ const Login = () => {
               <Shield className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-              {step === "email" ? "Sign up for free " : "Verify Login"}
+              {step === "email" ? "Welcome Back" : "Verify Login"}
             </h1>
             <p className="text-lg text-purple-200">
               {step === "email" 
-                ? "Manhwa AI" 
-                : `Enter the code sent to ${email}`}
+                ? "Sign in to Manhwa AI" 
+                : `Code sent to ${email}`}
             </p>
           </div>
 
@@ -207,7 +235,7 @@ const Login = () => {
               <button
                 onClick={handleGoogleSignIn}
                 disabled={loading}
-                className="w-full py-3.5 px-4 rounded-xl bg-transparent border border-gray-400/60 text-white font-semibold flex items-center justify-center gap-3 hover:bg-gray-50 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-3.5 px-4 rounded-xl bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-semibold flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -215,7 +243,7 @@ const Login = () => {
                   <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                   <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
-                Continue with Google
+                {loading ? "Connecting..." : "Continue with Google"}
               </button>
 
               <div className="flex items-center gap-4">
@@ -235,10 +263,14 @@ const Login = () => {
                     type="email"
                     required
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => {
+                      setEmail(e.target.value);
+                      setError(""); // Clear error on input
+                    }}
                     onKeyPress={handleKeyPress}
-                    placeholder="Enter your email"
-                    className="w-full rounded-xl bg-transparent backdrop-blur-sm border border-white/20 py-3.5 pl-12 pr-4 text-white placeholder-purple-300/50 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 transition-all"
+                    placeholder="you@example.com"
+                    className="w-full rounded-xl bg-white/5 backdrop-blur-sm border border-white/20 py-3.5 pl-12 pr-4 text-white placeholder-purple-300/50 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 transition-all"
+                    autoFocus
                   />
                 </div>
               </div>
@@ -251,7 +283,7 @@ const Login = () => {
 
               <button
                 onClick={handleSendOtp}
-                disabled={loading}
+                disabled={loading || !email}
                 className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-bold shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
                 {loading ? (
@@ -260,7 +292,7 @@ const Login = () => {
                     Sending...
                   </>
                 ) : (
-                  "Send Code"
+                  "Continue with Email"
                 )}
               </button>
 
@@ -291,6 +323,7 @@ const Login = () => {
                       ref={(el) => (otpInputs.current[index] = el)}
                       type="text"
                       inputMode="numeric"
+                      pattern="[0-9]*"
                       maxLength={1}
                       value={otp[index] || ''}
                       onChange={(e) => handleOtpChange(index, e.target.value)}
@@ -320,7 +353,7 @@ const Login = () => {
                     Verifying...
                   </>
                 ) : (
-                  "Verify & Login"
+                  "Verify & Continue"
                 )}
               </button>
 
@@ -342,6 +375,7 @@ const Login = () => {
                 <button
                   onClick={() => {
                     setOtp("");
+                    setError("");
                     handleSendOtp();
                   }}
                   disabled={loading}
@@ -354,10 +388,34 @@ const Login = () => {
           )}
         </div>
 
-        {/* Bottom Note */}
-        <div className="text-center mt-6 text-sm text-purple-200/60 flex items-center justify-center gap-2">
-          <Lock className="w-4 h-4" />
-          Secure authentication
+        {/* Bottom Security Note */}
+        <div className="text-center mt-6 space-y-2">
+          <div className="flex items-center justify-center gap-2 text-sm text-purple-200/80">
+            <Lock className="w-4 h-4" />
+            <span>Secure authentication powered by</span>
+          </div>
+          <div className="flex items-center justify-center gap-4 text-xs text-purple-300/60">
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
+              </svg>
+              OAuth 2.0
+            </span>
+            <span className="text-purple-300/40">•</span>
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6z"/>
+              </svg>
+              256-bit Encryption
+            </span>
+            <span className="text-purple-300/40">•</span>
+            <span className="flex items-center gap-1.5">
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>
+              </svg>
+              GDPR Compliant
+            </span>
+          </div>
         </div>
       </div>
 

@@ -12,6 +12,7 @@ import DocumentationPage from "../pages/Documentation";
 // 🚀 Home MUST NOT be lazy
 import HomePage from "../pages/Home";
 import UploadPage from "../pages/Upload";
+import AuthCallback from "../components/auth/AuthCallback";
 
 // Lazy-loaded pages (OK)
 
@@ -91,7 +92,7 @@ const Routing = () => {
             </Suspense>
           }
         />
-
+        <Route path="/auth/callback" element={<AuthCallback />} />
         {/* <Route path="/verify" element={<VerifyEmail />} /> */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>

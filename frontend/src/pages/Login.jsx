@@ -207,10 +207,10 @@ const Login = () => {
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-purple-500 to-indigo-600 mb-4 shadow-lg">
               <Shield className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-              {step === "email" ? "Welcome" : "Verify Login"}
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-2">
+              {step === "email" ? "Welcome Back" : "Verify Login"}
             </h1>
-            <p className="text-md text-purple-200">
+            <p className="text-md font-semibold text-purple-400/80">
               {step === "email" 
                 ? "Sign in to Manhwa AI for free" 
                 : `Code sent to ${email}`}

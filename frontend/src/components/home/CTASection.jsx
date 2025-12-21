@@ -17,7 +17,7 @@ const CTASection = () => {
 
           <div className="relative z-10 text-center">
             {/* TITLE */}
-            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-[1.15] pb-3 bg-gradient-to-r from-purple-800 via-purple-300 to-indigo-800 bg-clip-text text-transparent">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold mb-6 leading-[1.15] pb-3 bg-gradient-to-r from-purple-800 via-purple-500 to-indigo-800 bg-clip-text text-transparent">
               Ready to Bring Your Manga to Life?
             </h2>
 
@@ -32,7 +32,7 @@ const CTASection = () => {
               href="/upload"
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.97 }}
-              className="inline-flex items-center gap-3 px-8 sm:px-12 py-4 sm:py-5 bg-gradient-to-r from-yellow-500 to-yellow-400 text-black rounded-full text-base sm:text-lg font-bold shadow-lg hover:shadow-2xl hover:shadow-yellow-500/50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
+              className="inline-flex items-center gap-3 px-8 sm:px-12 py-4 sm:py-5 bg-gradient-to-r from-yellow-500 to-yellow-400 text-black rounded-full text-base sm:text-lg font-bold shadow-sm hover:shadow-md hover:shadow-yellow-500/50 transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-yellow-400"
             >
               Start Creating Now
               <ArrowRight className="w-5 h-5" />

@@ -196,21 +196,10 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0 bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900">
-        <div className="absolute inset-0" style={{
-          backgroundImage: `radial-gradient(circle at 20% 50%, rgba(147, 51, 234, 0.3) 0%, transparent 50%),
-                           radial-gradient(circle at 80% 80%, rgba(99, 102, 241, 0.3) 0%, transparent 50%),
-                           radial-gradient(circle at 40% 20%, rgba(168, 85, 247, 0.2) 0%, transparent 50%)`
-        }}></div>
-        
-        <div className="absolute top-20 left-20 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob"></div>
-        <div className="absolute top-40 right-20 w-72 h-72 bg-indigo-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-2000"></div>
-        <div className="absolute -bottom-8 left-40 w-72 h-72 bg-pink-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-blob animation-delay-4000"></div>
-      </div>
+     
 
       {/* Main Card */}
-      <div className="relative z-10 w-full max-w-md">
+      <div className="relative mt-10 z-10 w-full max-w-md">
         <div className="backdrop-blur-2xl bg-white/10 rounded-3xl border border-white/20 shadow-2xl p-8 sm:p-10">
           
           {/* Header */}
@@ -219,11 +208,11 @@ const Login = () => {
               <Shield className="w-8 h-8 text-white" />
             </div>
             <h1 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-              {step === "email" ? "Welcome Back" : "Verify Login"}
+              {step === "email" ? "Welcome" : "Verify Login"}
             </h1>
-            <p className="text-lg text-purple-200">
+            <p className="text-md text-purple-200">
               {step === "email" 
-                ? "Sign in to Manhwa AI" 
+                ? "Sign in to Manhwa AI for free" 
                 : `Code sent to ${email}`}
             </p>
           </div>
@@ -235,7 +224,7 @@ const Login = () => {
               <button
                 onClick={handleGoogleSignIn}
                 disabled={loading}
-                className="w-full py-3.5 px-4 rounded-xl bg-white hover:bg-gray-50 border border-gray-300 text-gray-700 font-semibold flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full py-3.5 px-4 rounded-xl bg-transparent border border-gray-400/50 hover:bg-white/10 border border-gray-300 text-white font-semibold flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -247,14 +236,14 @@ const Login = () => {
               </button>
 
               <div className="flex items-center gap-4">
-                <div className="flex-1 h-px bg-white/20"></div>
-                <span className="text-xs text-purple-200 font-medium">OR EMAIL</span>
+                <div className="flex-1 h-px bg-white/10"></div>
+                <span className="text-xs text-white font-medium">OR</span>
                 <div className="flex-1 h-px bg-white/20"></div>
               </div>
 
               {/* Email Input */}
               <div className="space-y-2">
-                <label className="text-sm font-medium text-purple-200 block">
+                <label className="text-sm font-medium text-white block">
                   Email Address
                 </label>
                 <div className="relative">
@@ -269,7 +258,7 @@ const Login = () => {
                     }}
                     onKeyPress={handleKeyPress}
                     placeholder="you@example.com"
-                    className="w-full rounded-xl bg-white/5 backdrop-blur-sm border border-white/20 py-3.5 pl-12 pr-4 text-white placeholder-purple-300/50 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 transition-all"
+                    className="w-full rounded-xl bg-transparent backdrop-blur-sm border border-white/20 py-3.5 pl-12 pr-4 text-white placeholder-gray-300/50 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-400/30 transition-all"
                     autoFocus
                   />
                 </div>
@@ -389,26 +378,26 @@ const Login = () => {
         </div>
 
         {/* Bottom Security Note */}
-        <div className="text-center mt-6 space-y-2">
-          <div className="flex items-center justify-center gap-2 text-sm text-purple-200/80">
+        <div className="text-center mt-5 space-y-2">
+          <div className="flex items-center mb-5 justify-center gap-2 text-sm text-yellow-300/80">
             <Lock className="w-4 h-4" />
-            <span>Secure authentication powered by</span>
+            <span>Secured by</span>
           </div>
-          <div className="flex items-center justify-center gap-4 text-xs text-purple-300/60">
+          <div className="flex items-center justify-center gap-4 text-xs text-yellow-300/60">
             <span className="flex items-center gap-1.5">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
               </svg>
               OAuth 2.0
             </span>
-            <span className="text-purple-300/40">•</span>
+            <span className="text-yellow-300/40">•</span>
             <span className="flex items-center gap-1.5">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6z"/>
               </svg>
               256-bit Encryption
             </span>
-            <span className="text-purple-300/40">•</span>
+            <span className="text-yellow-300/40">•</span>
             <span className="flex items-center gap-1.5">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>

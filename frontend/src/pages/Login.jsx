@@ -378,26 +378,26 @@ const Login = () => {
         </div>
 
         {/* Bottom Security Note */}
-        <div className="text-center mt-5 space-y-2">
-          <div className="flex items-center mb-5 justify-center gap-2 text-sm text-yellow-300/80">
+        <div className="text-center mt-7 space-y-2">
+          <div className="flex items-center mb-5 justify-center gap-2 text-sm text-gray-400">
             <Lock className="w-4 h-4" />
             <span>Secured by</span>
           </div>
-          <div className="flex items-center justify-center gap-4 text-xs text-yellow-300/60">
+          <div className="flex items-center justify-center gap-4 text-xs text-gray-300/50">
             <span className="flex items-center gap-1.5">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2L2 7v10c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V7l-10-5z"/>
               </svg>
               OAuth 2.0
             </span>
-            <span className="text-yellow-300/40">•</span>
+            <span className="text-gray-300/40">•</span>
             <span className="flex items-center gap-1.5">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zM9 6c0-1.66 1.34-3 3-3s3 1.34 3 3v2H9V6z"/>
               </svg>
               256-bit Encryption
             </span>
-            <span className="text-yellow-300/40">•</span>
+            <span className="text-gray-300/40">•</span>
             <span className="flex items-center gap-1.5">
               <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/>

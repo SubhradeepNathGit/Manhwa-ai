@@ -127,38 +127,42 @@ const Login = () => {
   };
 
   /* ---------------- Google Sign In ---------------- */
-  const handleGoogleSignIn = async () => {
-    try {
-      setLoading(true);
-      setError("");
-      console.log("Initiating Google Sign In...");
+const handleGoogleSignIn = async () => {
+  try {
+    setLoading(true);
+    setError("");
+    console.log("🚀 Initiating Google Sign In...");
 
-      sessionStorage.setItem(
-        "auth_redirect",
-        JSON.stringify({
-          pathname: location.state?.from?.pathname || "/upload",
-          search: location.state?.from?.search || "",
-          state: location.state?.from?.state || null,
-        })
-      );
-      
-      const { data, error } = await signInWithGoogle();
-      
-      if (error) {
-        console.error("Google Sign In Error:", error);
-        throw error;
-      }
-
-      console.log("Google Sign In Response:", data);
-      
-      // Google auth will handle redirect via callback
-      // The redirect URL should be set in your Supabase config
-    } catch (err) {
-      console.error("Error:", err);
-      setError(err.message || "Failed to sign in with Google");
-      setLoading(false);
+    // Save redirect location
+    sessionStorage.setItem(
+      "auth_redirect",
+      JSON.stringify({
+        pathname: location.state?.from?.pathname || "/upload",
+        search: location.state?.from?.search || "",
+        state: location.state?.from?.state || null,
+      })
+    );
+    
+    // Get dynamic callback URL
+    const redirectUrl = `${window.location.origin}/auth/callback`;
+    console.log("🔗 OAuth Redirect URL:", redirectUrl);
+    
+    const { data, error } = await signInWithGoogle(redirectUrl);
+    
+    if (error) {
+      console.error("❌ Google Sign In Error:", error);
+      throw error;
     }
-  };
+
+    console.log("✅ Google Sign In Response:", data);
+    
+    // OAuth will redirect automatically
+  } catch (err) {
+    console.error("❌ Error:", err);
+    setError(err.message || "Failed to sign in with Google");
+    setLoading(false);
+  }
+};
 
   /* ---------------- OTP Input Handlers ---------------- */
   const handleOtpChange = (index, value) => {
@@ -241,7 +245,7 @@ const Login = () => {
               <button
                 onClick={handleGoogleSignIn}
                 disabled={loading}
-                className="w-full py-3.5 px-4 rounded-xl bg-transparent border border-gray-400/50 hover:bg-white/10 border border-gray-300 text-white font-semibold flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                className="w-full py-3.5 px-4 rounded-xl bg-transparent border border-gray-400/50 hover:bg-white/10 text-white font-semibold flex items-center justify-center gap-3 transition-all shadow-lg hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />

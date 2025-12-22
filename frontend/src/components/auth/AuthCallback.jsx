@@ -1,3 +1,4 @@
+// src/components/auth/AuthCallback.jsx
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabaseClient';
@@ -11,36 +12,85 @@ const AuthCallback = () => {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
-        // Supabase auto-detects session because detectSessionInUrl = true
-        const { data } = await supabase.auth.getSession();
+        console.log('🔍 Callback URL:', window.location.href);
+        
+        // ✅ Wait for Supabase to process the hash fragment
+        const { data: { session }, error } = await supabase.auth.getSession();
 
-        if (!data?.session) {
+        console.log('🔍 Session:', session);
+        console.log('🔍 Error:', error);
+
+        if (error) {
+          console.error('❌ Auth error:', error);
           setStatus('error');
-          setMessage('Authentication failed');
+          setMessage(error.message || 'Authentication failed');
           setTimeout(() => navigate('/login'), 3000);
           return;
         }
 
+        if (!session) {
+          // ✅ Sometimes the session isn't immediately available
+          // Listen for auth state change
+          const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+            console.log('🔍 Auth event:', event);
+            
+            if (event === 'SIGNED_IN' && session) {
+              console.log('✅ Sign in successful');
+              setStatus('success');
+              setMessage('Authentication successful! Redirecting...');
+
+              setTimeout(() => {
+                const saved = sessionStorage.getItem("auth_redirect");
+                sessionStorage.removeItem("auth_redirect");
+
+                if (saved) {
+                  const { pathname, search, state } = JSON.parse(saved);
+                  navigate(`${pathname}${search || ""}`, { replace: true, state });
+                } else {
+                  navigate("/upload", { replace: true });
+                }
+              }, 1500);
+
+              subscription.unsubscribe();
+            } else if (event === 'SIGNED_OUT') {
+              setStatus('error');
+              setMessage('Authentication failed');
+              setTimeout(() => navigate('/login'), 3000);
+              subscription.unsubscribe();
+            }
+          });
+
+          // Cleanup after 10 seconds if nothing happens
+          setTimeout(() => {
+            subscription.unsubscribe();
+            if (status === 'loading') {
+              setStatus('error');
+              setMessage('Authentication timeout');
+              setTimeout(() => navigate('/login'), 3000);
+            }
+          }, 10000);
+
+          return;
+        }
+
+        // ✅ Session already exists
         setStatus('success');
         setMessage('Authentication successful! Redirecting...');
 
         setTimeout(() => {
           const saved = sessionStorage.getItem("auth_redirect");
+          sessionStorage.removeItem("auth_redirect");
 
           if (saved) {
             const { pathname, search, state } = JSON.parse(saved);
-            sessionStorage.removeItem("auth_redirect");
-
-            navigate(`${pathname}${search || ""}`, {
-              replace: true,
-              state,
-            });
+            navigate(`${pathname}${search || ""}`, { replace: true, state });
           } else {
             navigate("/upload", { replace: true });
           }
         }, 1500);
+
       } catch (err) {
-        console.error('Callback error:', err);
+        console.error('❌ Callback error:', err);
         setStatus('error');
         setMessage('An unexpected error occurred');
         setTimeout(() => navigate('/login'), 3000);

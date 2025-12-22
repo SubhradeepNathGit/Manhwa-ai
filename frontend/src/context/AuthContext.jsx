@@ -8,14 +8,18 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('🔍 Initial session check:', session ? 'Found' : 'Not found');
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
+    // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔍 Auth state changed:', event, session ? 'Session exists' : 'No session');
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -43,20 +47,41 @@ export const AuthProvider = ({ children }) => {
   };
 
   /* ---------- GOOGLE OAUTH ---------- */
-  const signInWithGoogle = async () => {
-    return supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
-        queryParams: {
-          access_type: "offline",
-          prompt: "consent",
+  const signInWithGoogle = async (redirectUrl) => {
+    // ✅ Use provided redirectUrl or fallback to dynamic construction
+    const callbackUrl = redirectUrl || `${window.location.origin}/auth/callback`;
+    
+    console.log('🔍 Starting Google Sign In');
+    console.log('🔍 Current origin:', window.location.origin);
+    console.log('🔍 Redirect URL:', callbackUrl);
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: callbackUrl,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
         },
-      },
-    });
+      });
+
+      if (error) {
+        console.error('❌ OAuth error:', error);
+        throw error;
+      }
+
+      console.log('✅ OAuth initiated successfully:', data);
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ Sign in with Google failed:', error);
+      return { data: null, error };
+    }
   };
 
   const logout = async () => {
+    console.log('🔍 Logging out');
     return supabase.auth.signOut();
   };
 

@@ -468,7 +468,7 @@ const DocumentationPage = () => {
                     <h4 className="font-semibold text-indigo-300 text-lg">Page Count Optimization</h4>
                   </div>
                   <p className="text-sm text-gray-300 leading-relaxed">
-                    For best results, process manga with 15-50 pages at a time. Very large files may take longer and require more browser resources.
+                    For best results, process manga with 10-15 pages at a time. Very large files may take longer and require more browser resources.
                   </p>
                 </div>
               </div>

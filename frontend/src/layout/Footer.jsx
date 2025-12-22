@@ -124,7 +124,7 @@ const Footer = () => {
         </div>
 
         {/* Bottom Bar */}
-        <div className="mt-14 pt-6 border-t border-gray-900">
+        <div className="mt-14 -mb-10 pt-6 border-t border-gray-900">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-3 text-sm text-gray-500 text-center sm:text-left">
             <p>© {new Date().getFullYear()} MANHWA AI - All rights reserved.</p>
 

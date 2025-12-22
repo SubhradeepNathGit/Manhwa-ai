@@ -110,3 +110,9 @@ body.swal2-shown {
     border-radius: 1rem !important;
   }
 }
+
+.heading-safe {
+  line-height: 1.3;
+  padding-bottom: 0.25rem;
+  overflow: visible;
+}

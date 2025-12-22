@@ -81,7 +81,7 @@ const HeroSection = ({ heroRef: propHeroRef }) => {
               mb-6 text-yellow-500/50 font-semibold
             "
           >
-            Transform Manga into Animated Youtube-Ready Anime Videos in just one click!
+            Transform Manga into Animated Youtube-Ready Videos in just one click!
           </motion.p>
 
           <motion.p
@@ -92,7 +92,7 @@ const HeroSection = ({ heroRef: propHeroRef }) => {
             "
           >
             Experience the future of storytelling — turn your favorite manga
-            PDF files into fully-animated YouTube videos with AI.
+            PDF files into Anime videos with AI.
           </motion.p>
 
           <motion.div variants={fadeUp}>

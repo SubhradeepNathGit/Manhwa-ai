@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { motion } from "framer-motion";
+import CTASection from "../components/home/CTASection";
 
 const faqData = [
   {
@@ -78,7 +79,7 @@ const Contact = () => {
     setErrorMessage("");
 
     try {
-      // 🔥 WEB3FORMS LOGIC STARTS HERE
+      
       const response = await fetch("https://api.web3forms.com/submit", {
         method: "POST",
         headers: {
@@ -115,7 +116,7 @@ const Contact = () => {
     <div className="min-h-screen text-white relative overflow-hidden">
       
       {/* Content */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px- py-20 lg:py-5">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-20 py-20 lg:py-5">
         
         {/* Header */}
         <motion.div
@@ -124,7 +125,7 @@ const Contact = () => {
           className="text-center mb-8 lg:mb-10"
         >
           <h1 className="text-3xl sm:text-4xl lg:text-4xl font-bold text-white mb-3">
-            Contact Us
+            CONTACT US
           </h1>
           <p className="text-gray-400 text-base">Have doubts or suggestions? Contact us directly with your queries </p>
         </motion.div>
@@ -177,7 +178,7 @@ const Contact = () => {
               <button
                 onClick={handleSubmit}
                 disabled={loading}
-                className="w-full py-3 rounded-full bg-gradient-to-r from-purple-600/50 to-transparent border border-purple-700 font-semibold  active:scale-90 transition-transform disabled:opacity-50"
+                className="w-full py-3 rounded-full bg-gradient-to-r from-purple-500 via-purple-400 to-purple-600 border border-gray-400/50 font-semibold  active:scale-90 transition-transform disabled:opacity-50"
               >
                 {loading ? "Sending..." : "Send Message"}
               </button>
@@ -241,6 +242,7 @@ const Contact = () => {
 
         {/* Developers */}
         <motion.div
+          className="mt-30"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
@@ -287,6 +289,12 @@ const Contact = () => {
             ))}
           </div>
         </motion.div>
+
+         {/* CTA Section */}
+        <div className="mt-10">
+        <CTASection />
+        </div>
+
       </div>
     </div>
   );

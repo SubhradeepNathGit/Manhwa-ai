@@ -353,7 +353,7 @@ const UploadPage = () => {
   }, []);
 
   return (
-    <main className="relative min-h-screen text-white/60 px-4 sm:px-6 lg:px-8 py-8 overflow-hidden">
+    <main className="relative max-w-8xl min-h-screen text-white/60 px-4 sm:px-6 lg:px-8 py-8 overflow-hidden">
       {/* BACKGROUND */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse" />

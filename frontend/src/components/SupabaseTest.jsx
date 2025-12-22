@@ -288,7 +288,7 @@ const SupabaseTest = () => {
           </div>
         </div>
 
-        <div className="mt-8 p-6 bg-indigo-500/10 border border-indigo-500/20 rounded-xl">
+        <div className="mt-8 p-6 rounded-xl">
           <h4 className="font-semibold text-white mb-2">Common Issues:</h4>
           <ul className="space-y-2 text-sm text-purple-200">
             <li>• <strong>Rate Limit:</strong> Supabase free tier allows 3 emails/hour</li>

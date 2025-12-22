@@ -87,7 +87,7 @@ const PricingSection = ({ pricingRef }) => {
             text-center
             text-3xl  sm:text-4xl md:text-5xl lg:text-6xl
             font-bold mb-6 leading-[1.3] pb-2
-            bg-gradient-to-r from-[#a855f7] via-[#7c3aed] to-[#4f46e5]
+            bg-gradient-to-r from-purple-800 via-purple-600 to-indigo-800
             bg-clip-text text-transparent
           "
         >

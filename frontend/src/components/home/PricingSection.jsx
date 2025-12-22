@@ -18,7 +18,11 @@ const cardVariants = {
     opacity: 1,
     y: 0,
     scale: 1,
-    transition: { duration: 0.6, ease: "easeOut" },
+    transition: { 
+      duration: 0.7, 
+      ease: [0.25, 0.1, 0.25, 1],
+      opacity: { duration: 0.5 }
+    },
   },
 };
 
@@ -78,11 +82,11 @@ const PricingSection = ({ pricingRef }) => {
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-          className="
+          transition={{ duration: 0.7, ease: [0.25, 0.1, 0.25, 1] }}
+           className="
             text-center
-            text-3xl sm:text-4xl md:text-5xl lg:text-6xl
-            font-bold mb-6 leading-[1.2]
+            text-3xl  sm:text-4xl md:text-5xl lg:text-6xl
+            font-bold mb-6 leading-[1.3] pb-2
             bg-gradient-to-r from-[#a855f7] via-[#7c3aed] to-[#4f46e5]
             bg-clip-text text-transparent
           "
@@ -90,16 +94,19 @@ const PricingSection = ({ pricingRef }) => {
           Pricing
         </motion.h2>
 
+        
+
         <motion.p
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.6, ease: "easeOut", delay: 0.05 }}
-          className="text-center text-gray-400 text-sm sm:text-base lg:text-lg max-w-2xl mx-auto mb-16 sm:mb-20"
+          transition={{ duration: 0.5, ease: [0.25, 0.1, 0.25, 1], delay: 0.2 }}
+          className="text-center -mt-5 text-gray-400 font-semibold text-base sm:text-lg lg:text-xl max-w-4xl mx-auto mb-16 sm:mb-20"
         >
-          We’re currently in{" "}
-          <span className="text-yellow-400 font-semibold">Beta</span>.  
-          All plans are temporarily free while we test and improve the platform.
+          <span className="bg-gradient-to-r from-yellow-400 via-orange-400 to-red-400 bg-clip-text text-transparent">
+            ⚡ Hurry up!
+          </span>{" "}
+          Get unlimited access to premium features for free during our BETA phase
         </motion.p>
 
         {/* ---------------- PRICING GRID ---------------- */}
@@ -107,7 +114,7 @@ const PricingSection = ({ pricingRef }) => {
           variants={containerVariants}
           initial="hidden"
           whileInView="show"
-          viewport={{ once: true, margin: "-80px" }}
+          viewport={{ once: true, margin: "-100px" }}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8"
         >
           {pricingPlans.map((plan, index) => (
@@ -115,13 +122,14 @@ const PricingSection = ({ pricingRef }) => {
               key={index}
               variants={cardVariants}
               className={`relative flex flex-col h-full rounded-3xl p-6 sm:p-8
-                backdrop-blur-2xl bg-white/5 border transition-all duration-500
+                backdrop-blur-2xl bg-white/5 border transition-all duration-300
                 ${
                   plan.popular
                     ? "border-yellow-400/40 shadow-2xl shadow-yellow-500/20"
                     : "border-white/10 hover:border-purple-400/40"
                 }
               `}
+              style={{ willChange: "transform, opacity" }}
             >
               {/* BETA BADGE */}
               {plan.popular && (

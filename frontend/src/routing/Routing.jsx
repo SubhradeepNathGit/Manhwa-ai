@@ -7,15 +7,13 @@ import Navbar from "../layout/Header";
 import Footer from "../layout/Footer";
 import ScrollToTop from "../components/ScrollonTop";
 import DocumentationPage from "../pages/Documentation";
-// import VerifyEmail from "../pages/VerifyEmail";
 
 // 🚀 Home MUST NOT be lazy
 import HomePage from "../pages/Home";
 import UploadPage from "../pages/Upload";
 import AuthCallback from "../components/auth/AuthCallback";
 
-// Lazy-loaded pages (OK)
-
+// Lazy-loaded pages
 const ContactPage = lazy(() => import("../pages/Contact"));
 const NotFoundPage = lazy(() => import("../pages/NotFound"));
 const LoginPage = lazy(() => import("../pages/Login"));
@@ -24,7 +22,8 @@ const LoginPage = lazy(() => import("../pages/Login"));
 const Layout = ({ children }) => {
   const location = useLocation();
 
-  const hideLayoutRoutes = ["/login", "/signup", "/404"];
+  // CHANGED: Added /auth/callback to hide layout routes
+  const hideLayoutRoutes = ["/login", "/signup", "/auth/callback"];
   const hideLayout = hideLayoutRoutes.includes(location.pathname);
 
   return (
@@ -92,9 +91,21 @@ const Routing = () => {
             </Suspense>
           }
         />
+
+        {/* AUTH CALLBACK - No Layout */}
         <Route path="/auth/callback" element={<AuthCallback />} />
-        {/* <Route path="/verify" element={<VerifyEmail />} /> */}
-        <Route path="*" element={<NotFoundPage />} />
+
+        {/* 404 - CATCH ALL - CHANGED: Wrapped in Suspense and Layout */}
+        <Route
+          path="*"
+          element={
+            <Suspense fallback={null}>
+              <Layout>
+                <NotFoundPage />
+              </Layout>
+            </Suspense>
+          }
+        />
       </Routes>
     </>
   );

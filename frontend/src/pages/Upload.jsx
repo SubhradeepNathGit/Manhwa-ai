@@ -530,7 +530,7 @@ const UploadPage = () => {
     isProcessing || !file
       ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
       : storyData
-      ? "bg-gradient-to-r from-purple-600 to-transparent hover:from-purple-500 hover:to-purple-700 border-purple-400 hover:scale-105 active:scale-95"
+      ? "bg-gradient-to-r from-purple-400/60 via-purple-400 to-indigo-500 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
       : "bg-white/10 border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95"
   }`}
         >
@@ -542,7 +542,7 @@ const UploadPage = () => {
           ) : storyData ? (
             <>
               <Cpu className="w-5 h-5 sm:w-6 sm:h-6" />
-              Generate Frames Again
+              Regenerate Frames
             </>
           ) : (
             <>
@@ -561,7 +561,7 @@ const UploadPage = () => {
     isProcessing || !file
       ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
       : storyData
-      ? "bg-gradient-to-r from-purple-600 to-transparent hover:from-purple-500 hover:to-purple-700 border-purple-400 hover:scale-105 active:scale-95"
+      ? "bg-gradient-to-r from-purple-400/60 via-purple-400/80 to-indigo-500/70 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
       : "bg-white/10 border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95"
   }`}
         >

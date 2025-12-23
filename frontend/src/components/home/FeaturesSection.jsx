@@ -58,14 +58,14 @@ const FeaturesSection = ({ featuresRef }) => {
   return (
     <section
       ref={featuresRef}
-      className="relative z-10 py-20 px-4"
+      className="mt-10 relative z-10 py-20 px-4"
     >
       <div className="max-w-7xl mx-auto">
         {/* ---------- Header ---------- */}
         <div className="text-center mb-16">
           <h2
             className="text-4xl sm:text-5xl md:text-6xl font-bold mb-6
-            bg-gradient-to-r from-purple-800 via-purple-300 to-indigo-800
+            bg-gradient-to-r from-purple-800 via-purple-500 to-indigo-800
             bg-clip-text text-transparent"
           >
             Powerful AI Features

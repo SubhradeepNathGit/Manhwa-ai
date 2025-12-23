@@ -64,7 +64,7 @@ const StatsSection = () => {
   return (
     <section
       ref={sectionRef}
-      className="relative z-10 py-16 sm:py-20 px-4"
+      className="relative mt-15 z-10 py-16 sm:py-20 px-4"
     >
       <div className="max-w-7xl mx-auto">
         <div className="rounded-3xl mt-6 sm:mt-10 -mb-16 sm:-mb-20 p-6 sm:p-10 md:p-12">
@@ -78,7 +78,7 @@ const StatsSection = () => {
                     transition-all duration-500 ease-out
                     ${
                       done[index]
-                        ? "scale-130 text-yellow-300/80 drop-shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+                        ? "scale-140 text-yellow-500/80 drop-shadow-[0_0_20px_rgba(255,255,255,0.15)]"
                         : "scale-110 text-gray-700/40"
                     }
                   `}

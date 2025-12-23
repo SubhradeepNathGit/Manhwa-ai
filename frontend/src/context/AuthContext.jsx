@@ -1,9 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
-
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-export const supabase = createClient(supabaseUrl, supabaseKey);
+import { supabase } from "../lib/supabaseClient";
 
 const AuthContext = createContext();
 
@@ -12,12 +8,18 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      console.log('🔍 Initial session check:', session ? 'Found' : 'Not found');
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('🔍 Auth state changed:', event, session ? 'Session exists' : 'No session');
       setUser(session?.user ?? null);
       setLoading(false);
     });
@@ -25,37 +27,84 @@ export const AuthProvider = ({ children }) => {
     return () => subscription.unsubscribe();
   }, []);
 
-  // --- CHANGED: OTP Functions ---
-
-  // 1. Send the Code
-  const sendOtp = (email) => {
-    return supabase.auth.signInWithOtp({ email });
+  /* ---------- OTP ---------- */
+  const sendOtp = async (email) => {
+    return supabase.auth.signInWithOtp({
+      email: email.trim().toLowerCase(),
+      options: {
+        shouldCreateUser: true,
+        emailRedirectTo: window.location.origin,
+      },
+    });
   };
 
-  // 2. Verify the Code
-  const verifyOtp = (email, token) => {
+  const verifyOtp = async (email, token) => {
     return supabase.auth.verifyOtp({
-      email,
-      token,
+      email: email.trim().toLowerCase(),
+      token: token.trim(),
       type: "email",
     });
   };
 
-  const signInWithGoogle = async () => {
-    const redirectTo = window.location.origin; 
-    return supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo },
-    });
+  /* ---------- GOOGLE OAUTH ---------- */
+  const signInWithGoogle = async (redirectUrl) => {
+    // ✅ Use provided redirectUrl or fallback to dynamic construction
+    const callbackUrl = redirectUrl || `${window.location.origin}/auth/callback`;
+    
+    console.log('🔍 Starting Google Sign In');
+    console.log('🔍 Current origin:', window.location.origin);
+    console.log('🔍 Redirect URL:', callbackUrl);
+    
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: callbackUrl,
+          queryParams: {
+            access_type: "offline",
+            prompt: "consent",
+          },
+        },
+      });
+
+      if (error) {
+        console.error('❌ OAuth error:', error);
+        throw error;
+      }
+
+      console.log('✅ OAuth initiated successfully:', data);
+      return { data, error: null };
+    } catch (error) {
+      console.error('❌ Sign in with Google failed:', error);
+      return { data: null, error };
+    }
   };
 
-  const logout = () => supabase.auth.signOut();
+  const logout = async () => {
+    console.log('🔍 Logging out');
+    return supabase.auth.signOut();
+  };
+
+  const value = {
+    user,
+    loading,
+    sendOtp,
+    verifyOtp,
+    signInWithGoogle,
+    logout,
+  };
 
   return (
-    <AuthContext.Provider value={{ user, sendOtp, verifyOtp, signInWithGoogle, logout, loading }}>
+    <AuthContext.Provider value={value}>
       {!loading && children}
     </AuthContext.Provider>
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within AuthProvider");
+  }
+  return context;
+};

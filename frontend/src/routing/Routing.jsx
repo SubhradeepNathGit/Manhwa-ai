@@ -5,23 +5,25 @@ import { Routes, Route, useLocation } from "react-router-dom";
 // Layout components
 import Navbar from "../layout/Header";
 import Footer from "../layout/Footer";
-import ScrollToTop from "../components/ScrollonTop"; 
+import ScrollToTop from "../components/ScrollonTop";
 import DocumentationPage from "../pages/Documentation";
 
 
-// Lazy load pages for better performance
-const HomePage = lazy(() => import("../pages/Home"));
-const UploadPage = lazy(() => import("../pages/Upload"));
+import HomePage from "../pages/Home";
+import UploadPage from "../pages/Upload";
+import AuthCallback from "../components/auth/AuthCallback";
+import NotFoundPage from "../pages/NotFound";
+// Lazy-loaded pages
 const ContactPage = lazy(() => import("../pages/Contact"));
-const NotFoundPage = lazy(() => import("../pages/NotFound"));
+
 const LoginPage = lazy(() => import("../pages/Login"));
 
 // Layout Wrapper
 const Layout = ({ children }) => {
   const location = useLocation();
 
-  // Routes where we HIDE Navbar + Footer
-  const hideLayoutRoutes = ["/login", "/signup", "/404"];
+  // CHANGED: Added /auth/callback to hide layout routes
+  const hideLayoutRoutes = ["/login", "/signup", "/auth/callback"];
   const hideLayout = hideLayoutRoutes.includes(location.pathname);
 
   return (
@@ -35,30 +37,75 @@ const Layout = ({ children }) => {
 
 const Routing = () => {
   return (
-    <Suspense
-      fallback={
-        <div className="flex justify-center items-center h-screen">
-          <div className="w-20 h-20 border-4 border-purple-600 border-t-transparent rounded-full animate-spin" />
-        </div>
-      }
-    >
-   
-      <ScrollToTop />  
+    <>
+      <ScrollToTop />
 
       <Routes>
-        {/* Pages wrapped with Layout */}
-        <Route path="/" element={<Layout><HomePage/></Layout>} />
-        <Route path="/upload" element={<Layout><UploadPage/></Layout>} />
-        <Route path="/contact" element={<Layout><ContactPage /></Layout>} />
-        <Route path="/docs" element={<Layout><DocumentationPage/></Layout>} />
-        <Route path="/login" element={<LoginPage />} />
+        {/* HOME — NO SUSPENSE */}
+        <Route
+          path="/"
+          element={
+            <Layout>
+              <HomePage />
+            </Layout>
+          }
+        />
 
+        {/* OTHER PAGES — SUSPENSE OK */}
+        <Route
+          path="/upload"
+          element={
+            <Suspense fallback={null}>
+              <Layout>
+                <UploadPage />
+              </Layout>
+            </Suspense>
+          }
+        />
 
+        <Route
+          path="/contact"
+          element={
+            <Suspense fallback={null}>
+              <Layout>
+                <ContactPage />
+              </Layout>
+            </Suspense>
+          }
+        />
 
-        {/* Catch-all for unmatched routes */}
-        <Route path="*" element={<NotFoundPage />} />
+        <Route
+          path="/docs"
+          element={
+            <Layout>
+              <DocumentationPage />
+            </Layout>
+          }
+        />
+
+        <Route
+          path="/login"
+          element={
+            <Suspense fallback={null}>
+              <LoginPage />
+            </Suspense>
+          }
+        />
+
+        {/* AUTH CALLBACK - No Layout */}
+        <Route path="/auth/callback" element={<AuthCallback />} />
+
+        {/* 404 - CATCH ALL - CHANGED: Wrapped in Suspense and Layout */}
+        <Route
+          path="*"
+          element={
+            
+              <NotFoundPage />
+        
+          }
+        />
       </Routes>
-    </Suspense>
+    </>
   );
 };
 

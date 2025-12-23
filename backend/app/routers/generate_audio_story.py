@@ -1,4 +1,4 @@
-# backend/app/routers/generate_audio_story.py (SIMPLIFIED)
+# backend/app/routers/generate_audio_story.py (FIXED: Visual Descriptions for Rich Audio)
 """
 ⚡ OPTIMIZED: Only generates audio story data
 Frontend handles video generation using ffmpeg.wasm
@@ -11,6 +11,9 @@ import tempfile
 import traceback
 from typing import List, Tuple
 import time
+
+# ⚡ Added for Visual Description
+import google.generativeai as genai
 
 from fastapi import APIRouter, Form, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
@@ -49,6 +52,35 @@ def pil_images_to_bytes(images: List) -> List[bytes]:
 
 
 # ------------------------------------------------------
+# Helper: Visual Description (Gemini Vision)
+# ------------------------------------------------------
+def generate_visual_description(image_bytes: bytes) -> str:
+    """
+    Uses Gemini Vision to generate a dramatic 1-sentence description 
+    of the panel action for audio narration.
+    """
+    try:
+        api_key = os.getenv("GOOGLE_API_KEY")
+        if not api_key:
+            print("⚠ No Google API Key found for visual description")
+            return ""
+        
+        genai.configure(api_key=api_key)
+        # Use Flash for speed and low cost
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        response = model.generate_content([
+            "Describe the action and emotion in this manga panel in exactly one short, dramatic sentence suitable for an audiobook narration. Do not mention text bubbles or panels.",
+            {"mime_type": "image/jpeg", "data": image_bytes}
+        ])
+        
+        return response.text.strip() if response.text else ""
+    except Exception as e:
+        print(f"⚠ Visual description failed: {e}")
+        return ""
+
+
+# ------------------------------------------------------
 # Helper: Process OCR + Upload in Parallel
 # ------------------------------------------------------
 async def process_panel_parallel(
@@ -78,16 +110,6 @@ async def generate_audio_story(
 ):
     """
     ⚡ OPTIMIZED: Returns everything needed for FRONTEND video generation
-    
-    Returns:
-        {
-            "manga_name": "...",
-            "image_urls": [...],        # For frontend video
-            "audio_url": "...",          # For frontend video
-            "final_video_segments": [...], # Animation instructions
-            "full_narration": "...",     # Optional
-            "processing_time": 45.3      # Seconds
-        }
     """
     temp_pdf_path = None
     merged_audio_tmp = None
@@ -157,14 +179,46 @@ async def generate_audio_story(
 
         scenes = llm_output.get("scenes", [])
         if not scenes:
-            raise HTTPException(500, "LLM returned no scenes")
+            scenes = []
+
+        # ⚡ FIX 1: Smart Visual Backfilling
+        # If LLM generates fewer scenes than images, use Vision AI + OCR
+        if len(scenes) < len(image_urls):
+            print(f"⚠ LLM generated {len(scenes)} scenes for {len(image_urls)} images. Backfilling with Visual AI...")
+            start_idx = len(scenes)
+            
+            for i in range(start_idx, len(image_urls)):
+                # 1. Get Visual Description (The "Instruction" requested)
+                # We run this in threadpool to avoid blocking
+                visual_desc = await run_in_threadpool(generate_visual_description, image_bytes[i])
+                
+                # 2. Get Text Content (OCR)
+                text_content = ""
+                if i < len(ocr_results) and ocr_results[i]:
+                     # Clean up text
+                     text_content = " ".join(ocr_results[i].split())
+                
+                # 3. Combine for rich audio
+                # Format: [Action Description]. [Character Dialogue]
+                full_narration = f"{visual_desc} {text_content}".strip()
+                
+                if not full_narration:
+                    print(f"   • Panel {i}: No visual or text content found.")
+                    full_narration = "" # Will fallback to silence
+
+                scenes.append({
+                    "narration_segment": full_narration,
+                    "image_page_index": i,
+                    "animation_type": "zoom_pan",
+                    "duration": 4.0 # Slightly longer for descriptive audio
+                })
 
         # Ensure required keys
         for i, sc in enumerate(scenes):
             sc.setdefault("image_page_index", min(i, len(image_urls) - 1))
             sc.setdefault("narration_segment", "")
-            sc.setdefault("animation_type", "zoom_pan")  # Default animation
-            sc.setdefault("duration", 3.0)  # Default 3 seconds per scene
+            sc.setdefault("animation_type", "zoom_pan")
+            sc.setdefault("duration", 3.0)
 
         # ------------------------------------------------------
         # STEP 5 — Generate TTS audio
@@ -177,16 +231,22 @@ async def generate_audio_story(
 
         for sc in scenes:
             narration = sc["narration_segment"].strip()
+            
+            # ⚡ FIX 2: Handle Audio Generation
             if not narration:
-                continue
-
-            audio_path, duration = await run_in_threadpool(generate_narration_audio, narration)
-
-            try:
-                clip = AudioSegment.from_mp3(audio_path)
-            except:
-                print("⚠ Audio damaged — using silent fallback")
-                clip = AudioSegment.silent(duration=duration * 1000)
+                # If absolutely no text (even after Visual+OCR fallback), use 2s silence
+                duration = 2.0 
+                clip = AudioSegment.silent(duration=2000)
+                print(f"   • Scene {len(final_scenes)+1}: [Silent]")
+            else:
+                # Generate audio
+                print(f"   • Scene {len(final_scenes)+1}: Generating TTS ({len(narration)} chars)...")
+                audio_path, duration = await run_in_threadpool(generate_narration_audio, narration)
+                try:
+                    clip = AudioSegment.from_mp3(audio_path)
+                except:
+                    print("⚠ Audio damaged — using silent fallback")
+                    clip = AudioSegment.silent(duration=duration * 1000)
 
             merged_audio += clip
 
@@ -223,13 +283,13 @@ async def generate_audio_story(
         print(f"✔ Completed in {processing_time:.2f}s")
 
         # ------------------------------------------------------
-        # RESPONSE (Ready for frontend video generation!)
+        # RESPONSE
         # ------------------------------------------------------
         return JSONResponse({
             "manga_name": manga_name,
-            "image_urls": image_urls,           # ⚡ Frontend uses these
-            "audio_url": audio_url,             # ⚡ Frontend merges this
-            "final_video_segments": final_scenes, # ⚡ Animation instructions
+            "image_urls": image_urls,
+            "audio_url": audio_url,
+            "final_video_segments": final_scenes,
             "full_narration": llm_output.get("full_narration", ""),
             "processing_time": round(processing_time, 2),
             "total_panels": len(image_urls),

@@ -23,13 +23,14 @@ const ManhwaAIHome = () => {
   ];
 
   useEffect(() => {
+    if (!videos.length) return;
+
     const timer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % videos.length);
     }, 5000);
+
     return () => clearInterval(timer);
   }, [videos.length]);
-
-
 
   return (
     <div className="min-h-screen bg-black text-white overflow-hidden relative">
@@ -44,7 +45,6 @@ const ManhwaAIHome = () => {
       />
       <StatsSection />
       <FeaturesSection featuresRef={featuresRef} />
-      
       <PricingSection pricingRef={pricingRef} />
       <CTASection />
     </div>

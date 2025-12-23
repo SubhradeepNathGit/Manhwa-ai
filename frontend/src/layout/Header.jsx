@@ -142,7 +142,7 @@ const Navbar = () => {
               {user ? (
                 <div className="flex items-center gap-3">
                   <div className="text-right">
-                    <p className="text-xs text-gray-400">Logged in as</p>
+                    <p className="text-xs text-gray-400">Hi</p>
                     <p className="text-sm font-semibold text-white max-w-[140px] truncate">
                       {user.email?.split("@")[0]}
                     </p>

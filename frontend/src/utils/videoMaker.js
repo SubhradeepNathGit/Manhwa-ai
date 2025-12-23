@@ -1,3 +1,13 @@
+// frontend/src/utils/videoMaker.js (FIXED: Added Smart Sequence Detection)
+/**
+ * ⚡ BROWSER-BASED VIDEO GENERATION
+ * * FEATURES:
+ * - Smart Sequence Detector: Fixes "Only 1st panel showing" bug
+ * - Robust index parsing (Handles strings "0" vs number 0)
+ * - 60% content area with smart animations
+ * - Browser-native image probing (Faster than FFmpeg probe)
+ */
+
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
@@ -69,48 +79,73 @@ async function downloadImage(url, filename, retries = 3) {
 }
 
 // =====================================================================
-// Smart Animation Filter (OPTIMIZED - No dimension detection)
+// Quick dimension detection (browser-based)
+// =====================================================================
+async function getImageDimensions(blob) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(blob);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve({ width: img.width, height: img.height });
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error('Failed to load image'));
+    };
+
+    img.src = url;
+  });
+}
+
+// =====================================================================
+// Smart Animation Filter (60% content area)
 // =====================================================================
 function getAnimationFilter(
-  animationType,
+  imageWidth,
+  imageHeight,
   duration,
-  imageWidth = 1080,
-  imageHeight = 1920,
   canvasWidth = 1080,
   canvasHeight = 1920
 ) {
-  const fps = 24; // Reduced from 30 for faster processing
+  const fps = 24;
   const totalFrames = Math.floor(duration * fps);
 
   // Content area = 60% of canvas width
   const contentWidth = Math.floor(canvasWidth * 0.6);   // 648px
-  const leftPadding = Math.floor(canvasWidth * 0.2);    // 216px (black bar)
+  const leftPadding = Math.floor(canvasWidth * 0.2);    // 216px
 
   // Calculate aspect ratios
   const imageAspect = imageHeight / imageWidth;
   const contentAspect = canvasHeight / contentWidth;
 
-  // =====================================================================
-  // DECISION LOGIC
-  // =====================================================================
+  // console.log(`[Filter] Image ${imageWidth}x${imageHeight}, Aspect: ${imageAspect.toFixed(2)}`);
 
-  // TALL IMAGES - Pan down (scroll top to bottom)
+  // =====================================================================
+  // TALL IMAGES - Pan down (scroll)
+  // =====================================================================
   if (imageAspect > contentAspect * 1.3) {
     const scaledWidth = contentWidth;
     const scaledHeight = Math.floor((imageHeight / imageWidth) * contentWidth);
     const panDistance = scaledHeight - canvasHeight;
 
     if (panDistance > 0) {
+      // Scroll from top to bottom
       return `scale=${scaledWidth}:${scaledHeight},` +
         `pad=${canvasWidth}:${scaledHeight}:${leftPadding}:0:black,` +
         `crop=${canvasWidth}:${canvasHeight}:0:'(ih-oh)*t/${duration}':exact=1`;
     } else {
+      // Not tall enough to scroll, just center
       return `scale=${scaledWidth}:${scaledHeight},` +
         `pad=${canvasWidth}:${canvasHeight}:${leftPadding}:(oh-ih)/2:black`;
     }
   }
 
+  // =====================================================================
   // SHORT IMAGES - Zoom effect
+  // =====================================================================
   else if (imageAspect < contentAspect * 0.7) {
     const scaledHeight = canvasHeight;
     const scaledWidth = Math.floor((imageWidth / imageHeight) * canvasHeight);
@@ -124,7 +159,9 @@ function getAnimationFilter(
       `pad=${canvasWidth}:${canvasHeight}:${leftPadding + (contentWidth - finalWidth) / 2}:(oh-ih)/2:black`;
   }
 
+  // =====================================================================
   // NORMAL IMAGES - Static with subtle zoom
+  // =====================================================================
   else {
     const scaledHeight = canvasHeight;
     const scaledWidth = Math.floor((imageWidth / imageHeight) * canvasHeight);
@@ -140,29 +177,7 @@ function getAnimationFilter(
 }
 
 // =====================================================================
-// Quick dimension detection (browser-based, much faster)
-// =====================================================================
-async function getImageDimensions(blob) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(blob);
-    
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve({ width: img.width, height: img.height });
-    };
-    
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('Failed to load image'));
-    };
-    
-    img.src = url;
-  });
-}
-
-// =====================================================================
-// MAIN FUNCTION (OPTIMIZED)
+// MAIN FUNCTION (FIXED)
 // =====================================================================
 export async function generateVideoFromScenes({
   imageUrls,
@@ -177,54 +192,107 @@ export async function generateVideoFromScenes({
   };
 
   try {
-    log('[Video] Starting optimized video generation...');
+    log('[Video] Starting video generation...');
+
+    // ⚡ VALIDATION: Check scene data
+    if (!scenes || scenes.length === 0) {
+      throw new Error('No scenes provided');
+    }
+
+    log(`[Video] Processing ${scenes.length} scenes with ${imageUrls.length} images`);
+
+    // ------------------------------------------------------------------------
+    // 🔍 SMART SEQUENCE DETECTOR
+    // If backend assigns "0" to every scene but we have multiple images,
+    // we force sequential distribution (0->0, 1->1, 2->2)
+    // ------------------------------------------------------------------------
+    let shouldForceSequential = false;
+    if (imageUrls.length > 1) {
+      const assignedIndices = scenes.map(s => s.image_page_index);
+      const uniqueIndices = new Set(assignedIndices.filter(idx => idx !== undefined && idx !== null));
+      
+      // Check if all assigned indices are 0 or "0"
+      const allZero = uniqueIndices.size === 1 && (uniqueIndices.has(0) || uniqueIndices.has("0"));
+      
+      // Check if indices are missing entirely
+      const allMissing = uniqueIndices.size === 0;
+
+      if (allZero || allMissing) {
+        shouldForceSequential = true;
+        log('⚠ DETECTED BROKEN SCENE INDICES (All 0 or Missing).');
+        log('⚡ Enabling Smart Fix: Forcing sequential display (Scene 1->Img 1, Scene 2->Img 2...)');
+      }
+    }
 
     const ffmpeg = await loadFFmpeg(onProgress);
 
-    log('[Download] Downloading all assets in parallel...');
+    log('[Download] Downloading all assets...');
 
-    // Download everything in parallel for maximum speed
+    // Download everything in parallel
     const downloadPromises = [
-      ...imageUrls.map((url, idx) => 
+      ...imageUrls.map((url, idx) =>
         downloadImage(url, `image_${idx}.jpg`).then(buffer => ({ buffer, idx }))
       ),
       fetch(audioUrl).then(r => r.arrayBuffer()).then(buffer => ({ buffer, isAudio: true }))
     ];
 
     const downloads = await Promise.all(downloadPromises);
-    
+
     const imageData = downloads.filter(d => !d.isAudio).sort((a, b) => a.idx - b.idx);
     const audioBuffer = downloads.find(d => d.isAudio).buffer;
 
-    log(`[Download] Downloaded ${imageData.length} images and audio`);
+    log(`[Download] ✅ Downloaded ${imageData.length} images and audio`);
 
-    // Write files to FFmpeg FS
+    // Write files to FFmpeg
     log('[FFmpeg] Writing files to memory...');
     for (let i = 0; i < imageData.length; i++) {
       await ffmpeg.writeFile(`image_${i}.jpg`, new Uint8Array(imageData[i].buffer));
     }
     await ffmpeg.writeFile('audio.mp3', new Uint8Array(audioBuffer));
 
-    log('[FFmpeg] Files loaded into FFmpeg');
+    log('[FFmpeg] ✅ Files loaded');
 
     // =====================================================================
-    // Generate clips with optimized settings
+    // ⚡ FIX: Generate clips
     // =====================================================================
-    log('[Encode] Generating clips with optimized encoding...');
+    log('[Encode] Generating clips...');
 
     const videoClips = [];
 
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
-      const imageIndex = scene.image_page_index || i;
-      const duration = scene.duration || 3.0;
 
-      const inputFile = `image_${Math.min(imageIndex, imageUrls.length - 1)}.jpg`;
+      let imageIndex;
+
+      if (shouldForceSequential) {
+        // FORCE SEQUENTIAL (Fixes the bug)
+        imageIndex = i % imageUrls.length;
+      } else {
+        // USE BACKEND INDEX (Normal logic)
+        let rawIndex = scene.image_page_index;
+        
+        // Parse strings "0" -> 0
+        if (typeof rawIndex === 'string' && !isNaN(parseInt(rawIndex, 10))) {
+          rawIndex = parseInt(rawIndex, 10);
+        }
+
+        if (typeof rawIndex === 'number' && !isNaN(rawIndex)) {
+          imageIndex = rawIndex;
+        } else {
+          imageIndex = i % imageUrls.length; // Fallback
+        }
+      }
+
+      // Clamp to valid range
+      imageIndex = Math.max(0, Math.min(imageIndex, imageUrls.length - 1));
+
+      const duration = scene.duration || 3.0;
+      const inputFile = `image_${imageIndex}.jpg`;
       const outputFile = `clip_${i}.mp4`;
 
-      log(`[Encode] Clip ${i + 1}/${scenes.length}: Processing...`);
+      log(`[Encode] Clip ${i + 1}/${scenes.length} → Using ${inputFile} (Duration: ${duration}s)`);
 
-      // Quick dimension detection (browser-based, much faster than FFmpeg probe)
+      // Detect dimensions
       let imageWidth = 1080;
       let imageHeight = 1920;
 
@@ -234,51 +302,49 @@ export async function generateVideoFromScenes({
         const dims = await getImageDimensions(tempBlob);
         imageWidth = dims.width;
         imageHeight = dims.height;
-        log(`[Encode] Detected: ${imageWidth}x${imageHeight}`);
       } catch (err) {
-        log(`[Encode] Using defaults: ${imageWidth}x${imageHeight}`);
+        log(`[Encode] ⚠ Using default dimensions for panel ${imageIndex}`);
       }
 
-      // Get smart filter
+      // Get animation filter
       const filter = getAnimationFilter(
-        scene.animation_type,
-        duration,
         imageWidth,
         imageHeight,
+        duration,
         1080,
         1920
       );
 
-      // Generate clip with OPTIMIZED settings
+      // Generate clip
       await ffmpeg.exec([
         '-loop', '1',
         '-i', inputFile,
         '-vf', filter,
         '-t', duration.toString(),
         '-c:v', 'libx264',
-        '-preset', 'ultrafast',      // Fastest preset
-        '-crf', '28',                 // Higher CRF = faster (was 23, now 28)
+        '-preset', 'ultrafast',
+        '-crf', '28',
         '-pix_fmt', 'yuv420p',
-        '-r', '24',                   // 24 FPS instead of 30
-        '-movflags', '+faststart',    // Better streaming
+        '-r', '24',
+        '-movflags', '+faststart',
         outputFile,
       ]);
 
       videoClips.push(outputFile);
-      
-      // Update progress more frequently
+
+      // Update progress
       if (onProgress) {
-        const clipProgress = ((i + 1) / scenes.length) * 70; // 70% of total progress
+        const clipProgress = ((i + 1) / scenes.length) * 70;
         onProgress(10 + clipProgress);
       }
     }
 
-    log('[Encode] All clips generated');
+    log('[Encode] ✅ All clips generated');
 
     // =====================================================================
     // Concatenate clips
     // =====================================================================
-    log('[Merge] Merging clips...');
+    log('[Merge] Merging clips in sequence...');
 
     const concatContent = videoClips.map(clip => `file '${clip}'`).join('\n');
     await ffmpeg.writeFile('concat.txt', concatContent);
@@ -292,25 +358,25 @@ export async function generateVideoFromScenes({
     ]);
 
     if (onProgress) onProgress(85);
-    log('[Merge] Clips merged');
+    log('[Merge] ✅ Clips merged');
 
     // =====================================================================
     // Add audio
     // =====================================================================
-    log('[Audio] Adding audio...');
+    log('[Audio] Adding audio track...');
 
     await ffmpeg.exec([
       '-i', 'video_no_audio.mp4',
       '-i', 'audio.mp3',
       '-c:v', 'copy',
       '-c:a', 'aac',
-      '-b:a', '128k',           // Lower audio bitrate for faster processing
+      '-b:a', '128k',
       '-shortest',
       'final_video.mp4',
     ]);
 
     if (onProgress) onProgress(95);
-    log('[Audio] Audio merged');
+    log('[Audio] ✅ Audio merged');
 
     // Read final video
     const data = await ffmpeg.readFile('final_video.mp4');
@@ -318,9 +384,9 @@ export async function generateVideoFromScenes({
     const videoUrl = URL.createObjectURL(blob);
 
     if (onProgress) onProgress(100);
-    log('[Video] Video generation complete!');
+    log('[Video] ✅ Video generation complete!');
 
-    // Cleanup (async, don't wait)
+    // Cleanup (async)
     setTimeout(async () => {
       try {
         for (const clip of videoClips) {
@@ -334,7 +400,7 @@ export async function generateVideoFromScenes({
           await ffmpeg.deleteFile(`image_${i}.jpg`);
         }
         await ffmpeg.deleteFile('audio.mp3');
-        log('[Cleanup] Cleanup completed');
+        log('[Cleanup] ✅ Cleanup completed');
       } catch (err) {
         console.warn('[Cleanup] Warning:', err);
       }
@@ -347,7 +413,7 @@ export async function generateVideoFromScenes({
     };
 
   } catch (error) {
-    console.error('[Video] Generation failed:', error);
+    console.error('[Video] ❌ Generation failed:', error);
     throw error;
   }
 }

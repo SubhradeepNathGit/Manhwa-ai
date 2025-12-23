@@ -8,14 +8,14 @@ import Footer from "../layout/Footer";
 import ScrollToTop from "../components/ScrollonTop";
 import DocumentationPage from "../pages/Documentation";
 
-// 🚀 Home MUST NOT be lazy
+
 import HomePage from "../pages/Home";
 import UploadPage from "../pages/Upload";
 import AuthCallback from "../components/auth/AuthCallback";
-
+import NotFoundPage from "../pages/NotFound";
 // Lazy-loaded pages
 const ContactPage = lazy(() => import("../pages/Contact"));
-const NotFoundPage = lazy(() => import("../pages/NotFound"));
+
 const LoginPage = lazy(() => import("../pages/Login"));
 
 // Layout Wrapper
@@ -99,11 +99,9 @@ const Routing = () => {
         <Route
           path="*"
           element={
-            <Suspense fallback={null}>
-              <Layout>
-                <NotFoundPage />
-              </Layout>
-            </Suspense>
+            
+              <NotFoundPage />
+        
           }
         />
       </Routes>

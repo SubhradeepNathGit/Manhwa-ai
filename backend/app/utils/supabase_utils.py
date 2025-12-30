@@ -39,52 +39,52 @@ def _clean_path(path: str) -> str:
 # -------------------------------------------------------------
 # SYNC Upload helper
 # -------------------------------------------------------------
-def supabase_upload(file_bytes: bytes, path: str, content_type: str = "image/jpeg") -> str:
+def supabase_upload(file_bytes: bytes, file_path: str, content_type: str) -> str:
     """
-    Fully synchronous Supabase uploader.
-    Ensures the return value is ALWAYS a real string (not coroutine).
+    Uploads file to Supabase Storage with RETRY logic.
+    Handles 'Server disconnected' errors by retrying.
     """
-
-    path = _clean_path(path)
-    path = path.lstrip("/")
-    path = path.replace(" ", "_")
-
-    print(f"⬆ Uploading to Supabase → {path}")
-
     max_retries = 3
+    
     for attempt in range(1, max_retries + 1):
-
         try:
+            # ⚡ OPTIMIZATION: Check if file already exists to skip upload
+            # (Optional, but good for speed if you re-run often)
+            # list_files = supabase.storage.from_(SUPABASE_BUCKET).list(os.path.dirname(file_path))
+            # ... (omitted for simplicity, sticking to overwrite)
+
+            # Upload (using 'upsert' to overwrite if exists)
             res = supabase.storage.from_(SUPABASE_BUCKET).upload(
-                path,
-                file_bytes,
-                {"content-type": content_type, "x-upsert": "true"}
+                path=file_path,
+                file=file_bytes,
+                file_options={"content-type": content_type, "upsert": "true"}
             )
-
-            # For older versions: response may be a dict containing error
-            if isinstance(res, dict) and res.get("error"):
-                raise RuntimeError(res["error"])
-
-            # Generate public URL (ALWAYS sync)
-            pub = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(path)
-
-            if isinstance(pub, dict) and pub.get("publicUrl"):
-                public_url = pub["publicUrl"]
-            elif isinstance(pub, dict) and pub.get("url"):
-                public_url = pub["url"]
-            else:
-                # Fallback deterministic URL
-                public_url = (
-                    f"{SUPABASE_URL}/storage/v1/object/public/"
-                    f"{SUPABASE_BUCKET}/{path}"
-                )
-
+            
+            # Construct Public URL
+            # Note: Supabase Python SDK usage varies. 
+            # If your bucket is public, we can construct the URL manually or use get_public_url
+            
+            public_url = supabase.storage.from_(SUPABASE_BUCKET).get_public_url(file_path)
+            
+            # ⚡ Fix: Sometimes get_public_url returns a signed URL or different format
+            # Ensure it looks correct. If get_public_url returns nothing useful, construct manually:
+            # public_url = f"{SUPABASE_URL}/storage/v1/object/public/{SUPABASE_BUCKET}/{file_path}"
+            
             print(f"✔ Uploaded → {public_url}")
             return public_url
 
         except Exception as e:
-            print(f"Upload attempt {attempt}/{max_retries} failed: {e}")
-            if attempt < max_retries:
-                time.sleep(attempt * 1)
-            else:
-                raise RuntimeError(f"❌ Supabase upload failed: {e}")
+            error_msg = str(e).lower()
+            print(f"⚠ Upload attempt {attempt}/{max_retries} failed: {error_msg}")
+            
+            # If it's the last attempt, raise the error
+            if attempt == max_retries:
+                raise RuntimeError(f"❌ Supabase upload failed after {max_retries} attempts: {e}")
+            
+            # Wait a bit before retrying (exponential backoff)
+            time.sleep(1.5 * attempt)
+            
+            # ⚡ CRITICAL FIX for "Server Disconnected":
+            # Sometimes the global client connection gets stale. 
+            # We rarely can "reset" the global client easily here without re-initializing,
+            # but usually, a short sleep + retry is enough for httpx to pick a new connection.

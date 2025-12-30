@@ -1,111 +1,36 @@
 """
-Gemini (Google AI Studio) replacement for OpenAI multimodal script generation.
-
-This version keeps:
-✔ The SAME function name: generate_cinematic_script
-✔ The SAME arguments
-✔ The SAME return structure
-✔ The SAME helpers (validate_scene, fallback_script, JSON extraction)
-✔ Debug logs
-✔ Minimal changes to rest of backend
-
-Just swap OpenAI → Google AI Studio.
-
-Requires:
-    pip install google-generativeai
-
-Env var:
-    GOOGLE_API_KEY=xxxxxx
+Groq (Llama 3.2 Vision) Script Generation
 """
 
 import os
-import re
 import json
 import base64
 import traceback
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 
-# Google AI SDK (Gemini)
-try:
-    import google.generativeai as genai
-except Exception:
-    raise RuntimeError(
-        "Google AI SDK missing. Install: pip install google-generativeai"
-    )
-
-from app.config import GOOGLE_API_KEY   # YOU MUST add this in config!
+from groq import Groq
 
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("google_ai_utils")
+logger = logging.getLogger("groq_utils")
 
-# Initialize Google Gemini client
-if not GOOGLE_API_KEY:
-    raise EnvironmentError("Missing GOOGLE_API_KEY in app.config or .env")
+# Initialize Groq
+groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
-genai.configure(api_key=GOOGLE_API_KEY)
-
-# You can change the model here if needed:
-# Recommended small + cheap multimodal model:
-GEMINI_MODEL = os.getenv("MANHWA_LLM_MODEL", "gemini-2.0-flash-lite")
-
-
-# ---------------------------------------------------------
-# Reuse your helper logic exactly as before
-# ---------------------------------------------------------
-def _safe_base64(img_bytes: bytes) -> str:
-    return base64.b64encode(img_bytes).decode("utf-8")
-
-
-def _extract_json_from_text(raw: str) -> Optional[str]:
-    if not raw:
-        return None
-
-    raw = raw.strip()
-
-    if raw.startswith("{") and raw.endswith("}"):
-        return raw
-
+def _extract_json_from_text(raw: str):
+    if not raw: return None
     start = raw.find("{")
     end = raw.rfind("}")
-    if start != -1 and end != -1 and end > start:
+    if start != -1 and end != -1:
         return raw[start:end + 1]
-
-    m = re.search(r"\{[\s\S]*\}", raw)
-    if m:
-        return m.group(0)
-
     return None
 
-
-def validate_scene(scene: Dict[str, Any], index: int) -> bool:
-    if not isinstance(scene, dict):
-        return False
-    if "narration_segment" not in scene or "image_page_index" not in scene:
-        return False
-    if not isinstance(scene["narration_segment"], str):
-        return False
-    if not isinstance(scene["image_page_index"], int):
-        return False
-    return True
-
-
 def fallback_script(name: str, ocr: str) -> Dict[str, Any]:
-    short = (ocr or "").strip()[:240]
     return {
-        "full_narration": f"Yeh {name} ki kahani hai. {short}...",
-        "scenes": [
-            {
-                "narration_segment": f"{name} ka short intro: {short}",
-                "image_page_index": 0
-            }
-        ]
+        "full_narration": f"Yeh {name} ki kahani hai...",
+        "scenes": [{"narration_segment": "Kahani shuru hoti hai...", "image_page_index": 0}]
     }
 
-
-# ---------------------------------------------------------
-# MAIN FUNCTION — Gemini multimodal replacement
-# ---------------------------------------------------------
 def generate_cinematic_script(
     manga_name: str,
     manga_genre: str,
@@ -114,143 +39,77 @@ def generate_cinematic_script(
     max_scenes: int = 200
 ) -> Dict[str, Any]:
 
-    logger.info("→ Preparing multimodal content for Gemini...")
-    MAX_IMAGES_TO_LLM = 50
-    if len(image_bytes_list) > MAX_IMAGES_TO_LLM:
-        print(f"⚠ Limiting {len(image_bytes_list)} images → {MAX_IMAGES_TO_LLM} for LLM")
-        # Take evenly distributed samples
-        indices = np.linspace(0, len(image_bytes_list)-1, MAX_IMAGES_TO_LLM, dtype=int)
-        image_bytes_list = [image_bytes_list[i] for i in indices]
+    # ⚡ Get strict count of panels
+    total_panels = len(image_bytes_list)
+    logger.info(f"→ Sending {total_panels} images to Groq. Demanding {total_panels} scenes.")
+
+    content_list = []
     
-    logger.info(f"→ Sending {len(image_bytes_list)} images to Gemini...")
+    # ⚡ MANGA-BHAI PERSONA (Strict 1-to-1 Mapping)
+    prompt = f"""
+    ROLE: You are 'Manga-Bhai', a high-energy Indian YouTuber who narrates manhwa frame-by-frame.
+    
+    INPUT CONTEXT:
+    - I have provided **{total_panels} individual panels**.
+    - You MUST generate exactly **{total_panels} distinct narration segments**.
+    
+    STRICT INSTRUCTIONS:
+    1. **One Scene Per Image:** You cannot combine images. Scene 1 must match Panel 0, Scene 2 must match Panel 1, etc.
+    2. **Continuity:** Ensure Scene 2 naturally follows Scene 1. (e.g., "Aur agle hi pal..." -> "Tabhi usne dekha...").
+    3. **Hinglish Narration:** Use energetic Hindi + English words (Action, Attack, Shock).
+    4. **No Summaries:** Do not summarize the whole page in the first scene. Describe ONLY what is in that specific panel.
+    5. **Dialogue:** If a character speaks in Panel X, narrate it in Scene X.
 
-    # Build the master instruction
-    MANHWA_RULES = f"""
-Tum ek popular 'Manhwa Explainer' YouTuber ho.
-
-RULES:
-1. Language → Hinglish (zyada Hindi, friendly tone)
-2. Tense → Present tense narration
-3. Har panel ke liye ek "scene" object banao
-4. Har panel ke visuals ko clearly explain karo
-5. Dialogue + Internal thoughts ko narration me merge karo
-6. Script engaging ho → jaise dost ko story suna rahe ho
-7. Sirf VALID JSON return karna (no text, no markdown)
-
-**STRICT STYLE GUIDELINES (Based on "Manhwa Onfire" style):**
-
-
-
-
-OUTPUT JSON FORMAT:
-{{
-  "full_narration": "string",
-  "scenes": [
+    OUTPUT FORMAT (JSON Only):
     {{
-      "narration_segment": "string",
-      "image_page_index": 0
+      "full_narration": "Short teaser of the chapter...",
+      "scenes": [
+        {{ "image_page_index": 0, "narration_segment": "Panel 1 description..." }},
+        {{ "image_page_index": 1, "narration_segment": "Continuity from Panel 1..." }},
+        ... (Must have exactly {total_panels} items)
+      ]
     }}
-  ]
-}}
 
-Manga: {manga_name}
-Genre: {manga_genre}
+    Manga: {manga_name}
+    Genre: {manga_genre}
     """
+    
+    content_list.append({"type": "text", "text": prompt})
 
-    # OCR split
-    if ocr_data:
-        ocr_pages = ocr_data.split("\n\n--- PAGE BREAK ---\n\n")
-    else:
-        ocr_pages = []
+    # Add images with explicit labels
+    for i, img_bytes in enumerate(image_bytes_list):
+        b64 = base64.b64encode(img_bytes).decode('utf-8')
+        content_list.append({
+            "type": "image_url",
+            "image_url": {"url": f"data:image/jpeg;base64,{b64}"}
+        })
+        content_list.append({"type": "text", "text": f"[Panel {i}]"})
 
-    # Build the input list for Gemini
-    contents = [
-        {"role": "user", "parts": [{"text": MANHWA_RULES}]}
-    ]
-
-    # Add all images + OCR combos exactly like OpenAI version
-    for idx, img_bytes in enumerate(image_bytes_list):
-        try:
-            b64 = _safe_base64(img_bytes)
-            contents[0]["parts"].append(
-                {"inline_data": {"mime_type": "image/jpeg", "data": b64}}
-            )
-        except:
-            logger.warning(f"Could not base64 image {idx}")
-
-        panel_text = ocr_pages[idx] if idx < len(ocr_pages) else ""
-        contents[0]["parts"].append(
-            {"text": f"[PANEL {idx}] OCR:\n{panel_text}\nExplain this panel."}
-        )
-
-    # Final instruction at end
-    contents[0]["parts"].append(
-        {"text": "Return ONLY JSON. No markdown."}
-    )
-
-    # ----------------------------
-    # Gemini API CALL
-    # ----------------------------
     try:
-        logger.info(f"Calling Gemini model: {GEMINI_MODEL}")
-
-        response = genai.GenerativeModel(GEMINI_MODEL).generate_content(
-            contents,
-            generation_config={
-                "temperature": 0.4,
-                "max_output_tokens": 4096,
-                "response_mime_type": "application/json"
-            }
+        completion = groq_client.chat.completions.create(
+            model="meta-llama/llama-4-scout-17b-16e-instruct", 
+            messages=[{"role": "user", "content": content_list}],
+            temperature=0.6, # Lower temperature for better adherence to "Count" instructions
+            max_tokens=2500,
+            response_format={"type": "json_object"} 
         )
 
-        # Gemini returns .text representing JSON if mime type is application/json
-        raw = response.text
-        if not raw:
-            raw = str(response)
+        raw = completion.choices[0].message.content
+        print(f"\n--- [DEBUG] MANGA-BHAI SCRIPT ({total_panels} Panels) ---\n{raw[:300]}...\n-------------------------------\n")
 
         json_str = _extract_json_from_text(raw)
-        if json_str is None:
-            logger.error("JSON extraction failed from Gemini output")
-            return fallback_script(manga_name, ocr_data)
+        if not json_str: return fallback_script(manga_name, ocr_data)
 
-        candidate = json.loads(json_str)
-
-        if "scenes" not in candidate or "full_narration" not in candidate:
-            return fallback_script(manga_name, ocr_data)
-
-        scenes = candidate["scenes"]
-        if not isinstance(scenes, list) or not scenes:
-            return fallback_script(manga_name, ocr_data)
-
-        # Validate + sanitize scenes
-        validated_scenes = []
-        img_count = max(1, len(image_bytes_list))
-
-        for i, s in enumerate(scenes):
-            if len(validated_scenes) >= max_scenes:
-                break
-            if not validate_scene(s, i):
-                continue
-
-            idx = s["image_page_index"]
-            if idx < 0 or idx >= img_count:
-                idx = 0
-
-            validated_scenes.append({
-                "narration_segment": s["narration_segment"].strip(),
-                "image_page_index": int(idx)
-            })
-
-        if not validated_scenes:
-            return fallback_script(manga_name, ocr_data)
-
-        logger.info(f"[SUCCESS] Gemini generated {len(validated_scenes)} scenes.")
-        return {
-            "full_narration": candidate.get("full_narration", "").strip(),
-            "scenes": validated_scenes
-        }
+        data = json.loads(json_str)
+        
+        # ⚡ Validation: Did we get enough scenes?
+        scenes = data.get("scenes", [])
+        if len(scenes) < total_panels:
+            logger.warning(f"⚠ AI generated {len(scenes)} scenes, expected {total_panels}. Taking evasive action.")
+        
+        return data
 
     except Exception as e:
-        logger.error("❌ Gemini multimodal failed:", e)
+        logger.error(f"❌ Groq Script Gen Failed: {e}")
         traceback.print_exc()
         return fallback_script(manga_name, ocr_data)

@@ -3,6 +3,7 @@ fastapi[all]
 uvicorn[standard]
 python-dotenv
 python-multipart
+edge-tts>=6.1.9
 
 # PDF & Image Processing
 pdf2image
@@ -15,6 +16,7 @@ pytesseract
 
 # AI/LLM
 google-generativeai
+groq
 
 # TTS
 gtts

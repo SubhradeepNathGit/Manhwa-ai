@@ -31,6 +31,7 @@ SUPABASE_BUCKET = os.getenv("SUPABASE_BUCKET", "Manhwa_ai")
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise EnvironmentError("❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
 
+MISTRAL_API_KEY = os.getenv("MISTRAL_API_KEY")
 
 # -----------------------------
 # GOOGLE OCR

@@ -140,16 +140,14 @@ const Navbar = () => {
             {/* -------- Desktop Auth -------- */}
             <div className="hidden lg:flex items-center gap-4">
               {user ? (
-                <div className="flex items-center gap-3">
-                  <div className="text-right">
-                    <p className="text-xs text-gray-400">Hi</p>
-                    <p className="text-sm font-semibold text-white max-w-[140px] truncate">
-                      {user.email?.split("@")[0]}
-                    </p>
-                  </div>
+                <div className="flex items-center gap-3 min-w-[200px] justify-end">
+                  <p className="text-sm font-medium text-white truncate">
+                    Hi, <span className="font-semibold capitalize">{user.email?.split("@")[0].split(/[._-]/)[0]}</span>
+                  </p>
                   <button
                     onClick={handleLogout}
-                    className="p-2 rounded-full bg-white/10 hover:bg-red-500/20 hover:text-red-400 transition"
+                    className="p-2 rounded-full bg-white/10 hover:bg-red-500/20 hover:text-red-400 transition-colors duration-200 shrink-0"
+                    title="Logout"
                   >
                     <LogOut className="w-5 h-5" />
                   </button>
@@ -157,7 +155,7 @@ const Navbar = () => {
               ) : (
                 <button
                   onClick={() => navigate("/login")}
-                  className="px-5 py-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold hover:shadow-lg transition"
+                  className="px-5 py-2 rounded-full bg-gradient-to-r from-purple-600 to-indigo-600 text-white font-semibold hover:shadow-lg transition min-w-[120px]"
                 >
                   SIGN IN
                 </button>

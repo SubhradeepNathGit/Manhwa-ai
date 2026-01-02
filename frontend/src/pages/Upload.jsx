@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import Swal from "sweetalert2"; // <--- IMPORTED SWEETALERT
+import Swal from "sweetalert2";
 import {
   Upload,
   Download,
@@ -20,10 +20,7 @@ import {
   Minimize,
 } from "lucide-react";
 
-// API
 import { generateAudioStory } from '../api/api';
-
-// Video generation utility
 import {
   generateVideoFromScenes,
   downloadVideo,
@@ -40,12 +37,8 @@ const UploadPage = () => {
   const [progress, setProgress] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [error, setError] = useState(null);
-
-  // Story data from backend
   const [storyData, setStoryData] = useState(null);
   const [panelImages, setPanelImages] = useState([]);
-
-  // Video generation states
   const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
   const [videoLogs, setVideoLogs] = useState([]);
@@ -59,9 +52,6 @@ const UploadPage = () => {
   const location = useLocation();
   const { user } = useAuth(); 
 
-  // -----------------------------------------------------------------
-  // RESTORE SESSION DATA
-  // -----------------------------------------------------------------
   useEffect(() => {
     const savedData = sessionStorage.getItem("pendingStory");
     const savedFileName = sessionStorage.getItem("pendingFileName");
@@ -73,7 +63,6 @@ const UploadPage = () => {
         setPanelImages(parsed.image_urls || []);
         setMangaName(savedFileName);
         
-        // Ghost file trick to keep UI consistent
         const dummyFile = { name: savedFileName, size: 0, type: "application/pdf" };
         setFile(dummyFile);
 
@@ -84,7 +73,6 @@ const UploadPage = () => {
     }
   }, []);
 
-  // Animation styles
   useEffect(() => {
     const style = document.createElement('style');
     style.textContent = `
@@ -100,9 +88,6 @@ const UploadPage = () => {
     return () => document.head.removeChild(style);
   }, []);
 
-  // ===================================================================
-  // VALIDATIONS
-  // ===================================================================
   const validateFile = (fileToValidate) => {
     if (!fileToValidate) return false;
     if (!fileToValidate.type.includes("pdf")) {
@@ -159,9 +144,6 @@ const UploadPage = () => {
     }
   };
 
-  // ===================================================================
-  // STEP 1: Generate Story
-  // ===================================================================
   const handleGenerateStory = async () => {
     if (!file || file.size === 0) {
       setError("Please upload a PDF first");
@@ -206,12 +188,11 @@ const UploadPage = () => {
         setIsProcessing(false);
       }, 500);
 
-      // ✨ SWEET ALERT SUCCESS
       Swal.fire({
         title: "Story Ready!",
         text: `${data.total_panels} panels, ${data.total_duration}s duration. Click "Generate Video" to create final video!`,
         icon: "success",
-        confirmButtonColor: "#9333ea", // Purple
+        confirmButtonColor: "#9333ea",
         background: "#1a1a1a",
         color: "#fff"
       });
@@ -225,11 +206,7 @@ const UploadPage = () => {
     }
   };
 
-  // ===================================================================
-  // STEP 2: Generate Video (WITH SWEET ALERT AUTH)
-  // ===================================================================
   const handleGenerateVideo = async () => {
-    // 🔒 AUTH CHECK WITH SWEET ALERT
     if (!user) {
         const result = await Swal.fire({
             title: "Login Required",
@@ -305,9 +282,6 @@ const UploadPage = () => {
     }
   };
 
-  // ===================================================================
-  // HELPERS
-  // ===================================================================
   const formatSize = (bytes) => {
     if (!bytes) return "0 Bytes";
     const sizes = ["Bytes", "KB", "MB"];
@@ -354,17 +328,12 @@ const UploadPage = () => {
 
   return (
     <main className="relative max-w-8xl min-h-screen text-white/60 px-4 sm:px-6 lg:px-8 py-8 overflow-hidden">
-      {/* BACKGROUND */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse" />
         <div className="absolute bottom-1/3 right-1/3 w-96 h-96 bg-purple-800/10 rounded-full blur-3xl animate-pulse" />
       </div>
 
-
-
-      {/* ========================== UPLOAD + SETTINGS ========================== */}
       <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12 max-w-6xl mx-auto relative">
-        {/* UPLOAD BOX */}
         <div className="lg:col-span-2">
           <div
             onDrop={handleDrop}
@@ -426,8 +395,35 @@ const UploadPage = () => {
             )}
           </div>
 
-          {/* PANEL GRID */}
-          {panelImages.length > 0 && (
+          {isProcessing && (
+            <div className="mt-4 sm:mt-6 bg-gray-900/40 backdrop-blur-md p-6 sm:p-8 border border-purple-500/30 rounded-xl sm:rounded-2xl shadow-2xl">
+              <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
+                <Cpu className="w-6 h-6 sm:w-7 sm:h-7 text-purple-400 animate-pulse" />
+                <h3 className="text-xl sm:text-2xl font-bold">Processing Manga</h3>
+              </div>
+
+              <div className="flex justify-between mb-3 text-sm sm:text-base">
+                <span className="text-gray-300 font-medium">Backend Processing</span>
+                <span className="text-purple-400 font-bold text-base sm:text-lg">{progress}%</span>
+              </div>
+
+              <div className="h-2 sm:h-3 bg-gray-800/50 rounded-full overflow-hidden mb-4 sm:mb-6">
+                <div
+                  className="h-full bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 transition-all duration-500 ease-out relative"
+                  style={{ width: `${progress}%` }}
+                >
+                  <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
+                </div>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 text-gray-400 text-xs sm:text-sm">
+                <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+                <span className="text-center">Extracting panels, running OCR, generating script and audio...</span>
+              </div>
+            </div>
+          )}
+
+          {!isProcessing && panelImages.length > 0 && (
             <div className="mt-4 sm:mt-6 bg-gray-900/30 backdrop-blur-sm p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-purple-500/20">
               <div className="flex items-center justify-between mb-4 sm:mb-5">
                 <h3 className="font-semibold text-sm sm:text-base md:text-lg flex items-center gap-1.5 sm:gap-2">
@@ -469,7 +465,6 @@ const UploadPage = () => {
           )}
         </div>
 
-        {/* SETTINGS */}
         <div className="bg-gray-900/30 backdrop-blur-sm border border-purple-500/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
           <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
             <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
@@ -519,9 +514,7 @@ const UploadPage = () => {
         </div>
       </div>
 
-      {/* ========================== ACTION BUTTONS ========================== */}
       <div className="max-w-6xl mx-auto flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center mb-8 sm:mb-10 lg:mb-12 relative px-4">
-        {/* Step 1: Generate Story */}
         <button
           onClick={handleGenerateStory}
           disabled={isProcessing || !file}
@@ -530,7 +523,7 @@ const UploadPage = () => {
     isProcessing || !file
       ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
       : storyData
-      ? "bg-gradient-to-r from-purple-400/60 via-purple-400 to-indigo-500 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
+      ? "bg-gradient-to-r from-purple-400 via-purple-400 to-indigo-500 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
       : "bg-white/10 border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95"
   }`}
         >
@@ -552,7 +545,6 @@ const UploadPage = () => {
           )}
         </button>
 
-        {/* Step 2: Generate Video (Browser) */}
         <button
           onClick={handleGenerateVideo}
           disabled={!storyData || isGeneratingVideo}
@@ -561,7 +553,7 @@ const UploadPage = () => {
     isProcessing || !file
       ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
       : storyData
-      ? "bg-gradient-to-r from-purple-400/60 via-purple-400/80 to-indigo-500/70 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
+      ? "bg-gradient-to-r from-purple-400 via-purple-400/80 to-indigo-500 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
       : "bg-white/10 border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95"
   }`}
         >
@@ -584,40 +576,8 @@ const UploadPage = () => {
         </button>
       </div>
 
-      {/* ========================== PROCESSING STATUS ========================== */}
-      {isProcessing && (
-        <div className="max-w-3xl mx-auto mb-8 sm:mb-10 lg:mb-12 relative px-4">
-          <div className="bg-gray-900/40 backdrop-blur-md p-6 sm:p-8 border border-purple-500/30 rounded-xl sm:rounded-2xl shadow-2xl">
-            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-              <Cpu className="w-6 h-6 sm:w-7 sm:h-7 text-purple-400 animate-pulse" />
-              <h3 className="text-xl sm:text-2xl font-bold">Processing Manga</h3>
-            </div>
-
-            <div className="flex justify-between mb-3 text-sm sm:text-base">
-              <span className="text-gray-300 font-medium">Backend Processing</span>
-              <span className="text-purple-400 font-bold text-base sm:text-lg">{progress}%</span>
-            </div>
-
-            <div className="h-2 sm:h-3 bg-gray-800/50 rounded-full overflow-hidden mb-4 sm:mb-6">
-              <div
-                className="h-full bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 transition-all duration-500 ease-out relative"
-                style={{ width: `${progress}%` }}
-              >
-                <div className="absolute inset-0 bg-white/20 animate-pulse"></div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-center gap-2 text-gray-400 text-xs sm:text-sm">
-              <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
-              <span className="text-center">Extracting panels, running OCR, generating script and audio...</span>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ========================== VIDEO GENERATION STATUS ========================== */}
       {isGeneratingVideo && (
-        <div className="max-w-3xl mx-auto mb-8 sm:mb-10 lg:mb-12 relative px-4">
+        <div className="max-w-6xl mx-auto mb-8 sm:mb-10 lg:mb-12 relative px-4">
           <div className="bg-gradient-to-br from-purple-900/20 via-purple-800/10 to-purple-900/20 backdrop-blur-xl p-6 sm:p-8 border border-purple-500/30 rounded-xl sm:rounded-2xl shadow-2xl">
             <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
               <Video className="w-6 h-6 sm:w-7 sm:h-7 text-purple-400 animate-pulse" />
@@ -626,7 +586,7 @@ const UploadPage = () => {
 
             <div className="flex justify-between mb-3 text-sm sm:text-base">
               <span className="text-gray-300 font-medium">Browser Processing</span>
-              <span className="text-purple-400 font-bold text-base sm:text-lg">{videoProgress}%</span>
+              <span className="text-white font-bold text-base sm:text-lg">{videoProgress}%</span>
             </div>
 
             <div className="relative h-3 sm:h-4 bg-black/40 backdrop-blur-sm rounded-full overflow-hidden mb-4 sm:mb-6 border border-purple-500/20">
@@ -653,21 +613,15 @@ const UploadPage = () => {
                 </div>
               ))}
             </div>
-
-            <div className="flex items-center justify-center gap-2 text-gray-400 text-xs sm:text-sm">
-              <Zap className="w-3 h-3 sm:w-4 sm:h-4" />
-              <span className="text-center">Video is being created in your browser using FFmpeg.wasm</span>
-            </div>
           </div>
         </div>
       )}
 
-      {/* ========================== FINAL VIDEO ========================== */}
       {videoUrl && !isGeneratingVideo && (
-        <div className="max-w-5xl mx-auto mb-20 relative px-4">
+        <div className="max-w-6xl mx-auto mb-20 relative px-4">
           <div
             ref={videoContainerRef}
-            className="bg-gradient-to-br from-gray-900 via-black to-gray-900 rounded-2xl overflow-hidden shadow-2xl border border-purple-500/30"
+            className="bg-gradient-to-br from-gray-900/10 via-black/10 to-gray-900/10 rounded-2xl overflow-hidden shadow-2xl border border-purple-500/30"
           >
             <div className="p-5 sm:p-6 border-b border-purple-500/20 bg-gradient-to-r from-purple-900/30 via-purple-800/20 to-purple-900/30 backdrop-blur-sm">
               <div className="flex items-center justify-between">
@@ -691,17 +645,6 @@ const UploadPage = () => {
                   >
                     <Download className="w-5 h-5" />
                   </button>
-                  {/* <button
-                    onClick={toggleFullscreen}
-                    className="p-3 rounded-lg bg-black/80 backdrop-blur-md transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-purple-500/50 shadow-lg hover:scale-110"
-                    title={isFullscreen ? "Exit Fullscreen" : "Fullscreen"}
-                  >
-                    {isFullscreen ? (
-                      <Minimize className="w-5 h-5" />
-                    ) : (
-                      <Maximize className="w-5 h-5" />
-                    )}
-                  </button> */}
                 </div>
               </div>
             </div>

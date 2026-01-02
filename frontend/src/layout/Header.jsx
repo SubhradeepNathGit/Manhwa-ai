@@ -10,6 +10,7 @@ import {
   LogOut,
   BookOpen,
   Home,
+  User,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 
@@ -177,15 +178,15 @@ const Navbar = () => {
       {isOpen && (
         <>
           <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
+            className="fixed inset-0 bg-black/70 backdrop-blur-sm z-40 lg:hidden transition-opacity"
             onClick={() => setIsOpen(false)}
           />
 
-          <aside className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-xs sm:max-w-sm bg-gray-900/95 backdrop-blur-xl border-l border-white/10 p-6 flex flex-col lg:hidden">
+          <aside className="fixed right-0 top-0 bottom-0 z-50 w-full max-w-xs sm:max-w-sm bg-black/30 backdrop-blur-2xl border-l border-gray-500/20 p-6 flex flex-col lg:hidden shadow-2xl">
             {/* Header */}
             <div className="flex items-center justify-between mb-8">
               <div className="flex items-center gap-2">
-                <img src="/manhwa-logo.png" className="w-10 h-10" />
+                <img src="/manhwa-logo.png" className="w-10 h-10" alt="Logo" />
                 <span className="font-bold text-white">MANHWA AI</span>
               </div>
               <button onClick={() => setIsOpen(false)}>
@@ -195,10 +196,18 @@ const Navbar = () => {
 
             {/* User */}
             {user && (
-              <div className="mb-6 p-4 rounded-xl bg-white/5 border border-white/10">
-                <p className="text-sm font-semibold text-white truncate">
-                  {user.email}
-                </p>
+              <div className="mb-6 p-4 rounded-xl bg-gradient-to-br from-gray-500/10 to-indigo-500/10 backdrop-blur-md border border-gray-500/30 shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 rounded-full bg-gradient-to-br from-purple-600 to-indigo-600 shadow-lg">
+                    <User className="w-6 h-6 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-gray-400 mb-0.5">Logged in as</p>
+                    <p className="text-sm font-semibold text-white truncate">
+                      {user.email}
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
 
@@ -222,7 +231,7 @@ const Navbar = () => {
             </nav>
 
             {/* Auth */}
-            <div className="pt-4 border-t border-gray-800">
+            <div className="pt-4 border-t border-purple-500/20">
               {user ? (
                 <button
                   onClick={handleLogout}

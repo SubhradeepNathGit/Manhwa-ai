@@ -1,12 +1,3 @@
-// frontend/src/utils/videoMaker.js (FIXED: Added Smart Sequence Detection)
-/**
- * ⚡ BROWSER-BASED VIDEO GENERATION
- * * FEATURES:
- * - Smart Sequence Detector: Fixes "Only 1st panel showing" bug
- * - Robust index parsing (Handles strings "0" vs number 0)
- * - 60% content area with smart animations
- * - Browser-native image probing (Faster than FFmpeg probe)
- */
 
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
@@ -241,7 +232,7 @@ export async function generateVideoFromScenes({
     const imageData = downloads.filter(d => !d.isAudio).sort((a, b) => a.idx - b.idx);
     const audioBuffer = downloads.find(d => d.isAudio).buffer;
 
-    log(`[Download] ✅ Downloaded ${imageData.length} images and audio`);
+    log(`[Download] Downloaded ${imageData.length} images and audio`);
 
     // Write files to FFmpeg
     log('[FFmpeg] Writing files to memory...');
@@ -250,7 +241,7 @@ export async function generateVideoFromScenes({
     }
     await ffmpeg.writeFile('audio.mp3', new Uint8Array(audioBuffer));
 
-    log('[FFmpeg] ✅ Files loaded');
+    log('[FFmpeg] Files loaded');
 
     // =====================================================================
     // ⚡ FIX: Generate clips
@@ -339,7 +330,7 @@ export async function generateVideoFromScenes({
       }
     }
 
-    log('[Encode] ✅ All clips generated');
+    log('[Encode] All clips generated');
 
     // =====================================================================
     // Concatenate clips
@@ -358,7 +349,7 @@ export async function generateVideoFromScenes({
     ]);
 
     if (onProgress) onProgress(85);
-    log('[Merge] ✅ Clips merged');
+    log('[Merge] Clips merged');
 
     // =====================================================================
     // Add audio
@@ -376,7 +367,7 @@ export async function generateVideoFromScenes({
     ]);
 
     if (onProgress) onProgress(95);
-    log('[Audio] ✅ Audio merged');
+    log('[Audio] Audio merged');
 
     // Read final video
     const data = await ffmpeg.readFile('final_video.mp4');
@@ -384,7 +375,7 @@ export async function generateVideoFromScenes({
     const videoUrl = URL.createObjectURL(blob);
 
     if (onProgress) onProgress(100);
-    log('[Video] ✅ Video generation complete!');
+    log('[Video] Video generation complete!');
 
     // Cleanup (async)
     setTimeout(async () => {
@@ -400,7 +391,7 @@ export async function generateVideoFromScenes({
           await ffmpeg.deleteFile(`image_${i}.jpg`);
         }
         await ffmpeg.deleteFile('audio.mp3');
-        log('[Cleanup] ✅ Cleanup completed');
+        log('[Cleanup] Cleanup completed');
       } catch (err) {
         console.warn('[Cleanup] Warning:', err);
       }
@@ -413,7 +404,7 @@ export async function generateVideoFromScenes({
     };
 
   } catch (error) {
-    console.error('[Video] ❌ Generation failed:', error);
+    console.error('[Video] Generation failed:', error);
     throw error;
   }
 }

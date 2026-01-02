@@ -47,14 +47,20 @@ const UploadPage = () => {
 
   const fileInputRef = useRef(null);
   const videoContainerRef = useRef(null);
+  const videoGenerationRef = useRef(null);
   
   const navigate = useNavigate();
   const location = useLocation();
   const { user } = useAuth(); 
 
+  // Restore session data on mount
   useEffect(() => {
     const savedData = sessionStorage.getItem("pendingStory");
     const savedFileName = sessionStorage.getItem("pendingFileName");
+    const savedVideoUrl = sessionStorage.getItem("pendingVideoUrl");
+    const savedIsGeneratingVideo = sessionStorage.getItem("isGeneratingVideo");
+    const savedVideoProgress = sessionStorage.getItem("videoProgress");
+    const savedVideoLogs = sessionStorage.getItem("videoLogs");
 
     if (savedData && savedFileName) {
       try {
@@ -66,12 +72,101 @@ const UploadPage = () => {
         const dummyFile = { name: savedFileName, size: 0, type: "application/pdf" };
         setFile(dummyFile);
 
-        console.log("♻️ Session Restored");
+        // Restore video if available
+        if (savedVideoUrl) {
+          setVideoUrl(savedVideoUrl);
+        }
+
+        // Restore video generation state if it was in progress
+        if (savedIsGeneratingVideo === "true") {
+          setIsGeneratingVideo(true);
+          setVideoProgress(parseInt(savedVideoProgress || "0"));
+          if (savedVideoLogs) {
+            setVideoLogs(JSON.parse(savedVideoLogs));
+          }
+          // Resume video generation
+          resumeVideoGeneration(parsed);
+        }
+
+        console.log("♻️ Session Restored", savedVideoUrl ? "(with video)" : "");
       } catch (e) {
         console.error("Failed to restore session", e);
       }
     }
   }, []);
+
+  // Save video generation state to session storage
+  useEffect(() => {
+    if (isGeneratingVideo) {
+      sessionStorage.setItem("isGeneratingVideo", "true");
+      sessionStorage.setItem("videoProgress", videoProgress.toString());
+      sessionStorage.setItem("videoLogs", JSON.stringify(videoLogs));
+    } else {
+      sessionStorage.removeItem("isGeneratingVideo");
+      sessionStorage.removeItem("videoProgress");
+      sessionStorage.removeItem("videoLogs");
+    }
+  }, [isGeneratingVideo, videoProgress, videoLogs]);
+
+  // Save video URL to session storage whenever it changes
+  useEffect(() => {
+    if (videoUrl) {
+      sessionStorage.setItem("pendingVideoUrl", videoUrl);
+    }
+  }, [videoUrl]);
+
+  // Resume video generation if it was interrupted
+  const resumeVideoGeneration = async (data) => {
+    try {
+      setVideoLogs(prev => [...prev, "Resuming video generation..."]);
+      
+      await loadFFmpeg((p) => {
+        const safeProgress = Math.min(Math.floor(p), 10);
+        setVideoProgress(prev => Math.max(prev, safeProgress));
+        setMaxVideoProgress(prev => Math.max(prev, safeProgress));
+      });
+
+      setVideoLogs(prev => [...prev, "Video processor ready, continuing generation..."]);
+
+      const result = await generateVideoFromScenes({
+        imageUrls: data.image_urls,
+        audioUrl: data.audio_url,
+        scenes: data.final_video_segments,
+        onProgress: (p) => {
+          const actualProgress = 10 + Math.floor(p * 0.90);
+          const safeProgress = Math.min(actualProgress, 100);
+          setVideoProgress(prev => Math.max(prev, safeProgress));
+          setMaxVideoProgress(prev => Math.max(prev, safeProgress));
+        },
+        onLog: (msg) => setVideoLogs(prev => [...prev, msg]),
+      });
+
+      setVideoUrl(result.videoUrl);
+      setVideoBlob(result.blob);
+      setVideoProgress(100);
+      setMaxVideoProgress(100);
+
+      setTimeout(() => {
+        setIsGeneratingVideo(false);
+      }, 500);
+
+      Swal.fire({
+        title: "Video Generated!",
+        text: "Your video has been successfully generated.",
+        icon: "success",
+        confirmButtonColor: "#9333ea",
+        background: "#1a1a1a",
+        color: "#fff"
+      });
+
+    } catch (err) {
+      console.error("Resume video generation error:", err);
+      setError(err.message || "Video generation failed");
+      setIsGeneratingVideo(false);
+      setVideoProgress(0);
+      setMaxVideoProgress(0);
+    }
+  };
 
   useEffect(() => {
     const style = document.createElement('style');
@@ -116,6 +211,7 @@ const UploadPage = () => {
       
       sessionStorage.removeItem("pendingStory");
       sessionStorage.removeItem("pendingFileName");
+      sessionStorage.removeItem("pendingVideoUrl");
     }
   };
 
@@ -138,6 +234,7 @@ const UploadPage = () => {
     
     sessionStorage.removeItem("pendingStory");
     sessionStorage.removeItem("pendingFileName");
+    sessionStorage.removeItem("pendingVideoUrl");
 
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -157,6 +254,7 @@ const UploadPage = () => {
     setStoryData(null);
     setVideoUrl(null);
     setVideoBlob(null);
+    sessionStorage.removeItem("pendingVideoUrl");
 
     let progressInterval = null;
 
@@ -238,16 +336,33 @@ const UploadPage = () => {
     setVideoLogs([]);
     setError(null);
 
+    // Save state immediately
+    sessionStorage.setItem("isGeneratingVideo", "true");
+    sessionStorage.setItem("videoProgress", "0");
+    sessionStorage.setItem("videoLogs", JSON.stringify([]));
+
     try {
-      setVideoLogs(prev => [...prev, "Initializing video processor..."]);
+      setVideoLogs(prev => {
+        const newLogs = [...prev, "Initializing video processor..."];
+        sessionStorage.setItem("videoLogs", JSON.stringify(newLogs));
+        return newLogs;
+      });
+
       await loadFFmpeg((p) => {
         const safeProgress = Math.min(Math.floor(p), 10);
-        setVideoProgress(prev => Math.max(prev, safeProgress));
+        setVideoProgress(prev => {
+          const newProgress = Math.max(prev, safeProgress);
+          sessionStorage.setItem("videoProgress", newProgress.toString());
+          return newProgress;
+        });
         setMaxVideoProgress(prev => Math.max(prev, safeProgress));
       });
 
-      setVideoLogs(prev => [...prev, "Video processor loaded successfully"]);
-      setVideoLogs(prev => [...prev, "Starting optimized video generation..."]);
+      setVideoLogs(prev => {
+        const newLogs = [...prev, "Video processor loaded successfully", "Starting optimized video generation..."];
+        sessionStorage.setItem("videoLogs", JSON.stringify(newLogs));
+        return newLogs;
+      });
 
       const result = await generateVideoFromScenes({
         imageUrls: storyData.image_urls,
@@ -256,19 +371,33 @@ const UploadPage = () => {
         onProgress: (p) => {
           const actualProgress = 10 + Math.floor(p * 0.90);
           const safeProgress = Math.min(actualProgress, 100);
-          setVideoProgress(prev => Math.max(prev, safeProgress));
+          setVideoProgress(prev => {
+            const newProgress = Math.max(prev, safeProgress);
+            sessionStorage.setItem("videoProgress", newProgress.toString());
+            return newProgress;
+          });
           setMaxVideoProgress(prev => Math.max(prev, safeProgress));
         },
-        onLog: (msg) => setVideoLogs(prev => [...prev, msg]),
+        onLog: (msg) => {
+          setVideoLogs(prev => {
+            const newLogs = [...prev, msg];
+            sessionStorage.setItem("videoLogs", JSON.stringify(newLogs));
+            return newLogs;
+          });
+        },
       });
 
       setVideoUrl(result.videoUrl);
       setVideoBlob(result.blob);
       setVideoProgress(100);
       setMaxVideoProgress(100);
+      sessionStorage.setItem("videoProgress", "100");
 
       setTimeout(() => {
         setIsGeneratingVideo(false);
+        sessionStorage.removeItem("isGeneratingVideo");
+        sessionStorage.removeItem("videoProgress");
+        sessionStorage.removeItem("videoLogs");
       }, 500);
 
       console.log("Video generated:", result);
@@ -279,6 +408,9 @@ const UploadPage = () => {
       setIsGeneratingVideo(false);
       setVideoProgress(0);
       setMaxVideoProgress(0);
+      sessionStorage.removeItem("isGeneratingVideo");
+      sessionStorage.removeItem("videoProgress");
+      sessionStorage.removeItem("videoLogs");
     }
   };
 
@@ -327,13 +459,15 @@ const UploadPage = () => {
   }, []);
 
   return (
-    <main className="relative max-w-8xl min-h-screen text-white/60 px-4 sm:px-6 lg:px-8 py-8 overflow-hidden">
+    <main className="relative w-full min-h-screen text-white px-3 sm:px-4 md:px-6 lg:px-8 py-6 sm:py-8 overflow-hidden">
+      {/* Background gradients */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse" />
-        <div className="absolute bottom-1/3 right-1/3 w-96 h-96 bg-purple-800/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute top-1/4 left-1/4 w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96 bg-purple-600/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-1/3 right-1/3 w-64 h-64 sm:w-80 sm:h-80 lg:w-96 lg:h-96 bg-purple-800/10 rounded-full blur-3xl animate-pulse" />
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-10 lg:mb-12 max-w-6xl mx-auto relative">
+      <div className="grid lg:grid-cols-3 gap-4 sm:gap-5 md:gap-6 mb-6 sm:mb-8 lg:mb-10 max-w-7xl mx-auto relative">
+        {/* Main upload area */}
         <div className="lg:col-span-2">
           <div
             onDrop={handleDrop}
@@ -346,9 +480,9 @@ const UploadPage = () => {
               setIsDragging(false);
             }}
             onClick={() => fileInputRef.current?.click()}
-            className={`relative border-2 border-dotted rounded-xl sm:rounded-2xl p-6 sm:p-8 lg:p-10 transition-all duration-300 backdrop-blur-sm ${
+            className={`relative border-2 border-dotted rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 lg:p-10 transition-all duration-300 backdrop-blur-sm ${
               isDragging
-                ? "border-purple-400 bg-purple-500/10 scale-[1.02]"
+                ? "border-purple-400 bg-purple-500/10 scale-[1.01] sm:scale-[1.02]"
                 : file
                 ? "border-purple-500 bg-purple-500/5"
                 : "border-gray-700 bg-gray-900/30"
@@ -363,23 +497,23 @@ const UploadPage = () => {
             />
 
             {!file ? (
-              <div className="flex flex-col items-center justify-center py-4 sm:py-8">
-                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-purple-500/10 flex items-center justify-center mb-4 sm:mb-6 group-hover:scale-110 transition-transform">
-                  <Upload className="w-8 h-8 sm:w-10 sm:h-10 text-purple-400" />
+              <div className="flex flex-col items-center justify-center py-6 sm:py-8">
+                <div className="w-14 h-14 sm:w-16 sm:h-16 md:w-20 md:h-20 rounded-full bg-purple-500/10 flex items-center justify-center mb-3 sm:mb-4 md:mb-6 group-hover:scale-110 transition-transform">
+                  <Upload className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 text-purple-400" />
                 </div>
-                <p className="text-xl sm:text-2xl font-semibold mb-2 text-center">Drop your manga PDF here</p>
-                <p className="text-gray-400 text-sm text-center">or click to browse</p>
-                <p className="text-gray-500 text-xs mt-3 sm:mt-4 text-center">Maximum file size: 50MB</p>
+                <p className="text-lg sm:text-xl md:text-2xl font-semibold mb-1 sm:mb-2 text-center px-2">Drop your manga PDF here</p>
+                <p className="text-gray-400 text-xs sm:text-sm text-center">or click to browse</p>
+                <p className="text-gray-500 text-xs mt-2 sm:mt-3 md:mt-4 text-center">Maximum file size: 50MB</p>
               </div>
             ) : (
-              <div className="flex items-center gap-4 sm:gap-6">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-purple-500/10 rounded-xl flex items-center justify-center flex-shrink-0 border border-purple-500/20">
-                  <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-purple-400" />
+              <div className="flex items-center gap-3 sm:gap-4 md:gap-6">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 md:w-16 md:h-16 bg-purple-500/10 rounded-lg sm:rounded-xl flex items-center justify-center flex-shrink-0 border border-purple-500/20">
+                  <FileText className="w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8 text-purple-400" />
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-base sm:text-lg truncate">{file.name}</p>
-                  <p className="text-gray-400 text-xs sm:text-sm mt-1">{formatSize(file.size)}</p>
+                  <p className="font-semibold text-sm sm:text-base md:text-lg truncate">{file.name}</p>
+                  <p className="text-gray-400 text-xs sm:text-sm mt-0.5 sm:mt-1">{formatSize(file.size)}</p>
                 </div>
 
                 <button
@@ -387,27 +521,28 @@ const UploadPage = () => {
                     e.stopPropagation();
                     removeFile();
                   }}
-                  className="p-2 sm:p-3 hover:bg-purple-500/10 rounded-xl transition-all hover:scale-110 border border-transparent hover:border-purple-500/20"
+                  className="p-2 sm:p-2.5 md:p-3 hover:bg-purple-500/10 rounded-lg sm:rounded-xl transition-all hover:scale-110 border border-transparent hover:border-purple-500/20 flex-shrink-0"
                 >
-                  <Trash className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
+                  <Trash className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-purple-400" />
                 </button>
               </div>
             )}
           </div>
 
+          {/* Processing indicator */}
           {isProcessing && (
-            <div className="mt-4 sm:mt-6 bg-gray-900/40 backdrop-blur-md p-6 sm:p-8 border border-purple-500/30 rounded-xl sm:rounded-2xl shadow-2xl">
-              <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-                <Cpu className="w-6 h-6 sm:w-7 sm:h-7 text-purple-400 animate-pulse" />
-                <h3 className="text-xl sm:text-2xl font-bold">Processing Manga</h3>
+            <div className="mt-4 sm:mt-5 md:mt-6 bg-gray-900/40 backdrop-blur-md p-4 sm:p-6 md:p-8 border border-purple-500/30 rounded-xl sm:rounded-2xl shadow-2xl">
+              <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 md:mb-6">
+                <Cpu className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-purple-400 animate-pulse flex-shrink-0" />
+                <h3 className="text-lg sm:text-xl md:text-2xl font-bold">Processing Manga</h3>
               </div>
 
-              <div className="flex justify-between mb-3 text-sm sm:text-base">
+              <div className="flex justify-between mb-2 sm:mb-3 text-xs sm:text-sm md:text-base">
                 <span className="text-gray-300 font-medium">Backend Processing</span>
-                <span className="text-purple-400 font-bold text-base sm:text-lg">{progress}%</span>
+                <span className="text-purple-400 font-bold text-sm sm:text-base md:text-lg">{progress}%</span>
               </div>
 
-              <div className="h-2 sm:h-3 bg-gray-800/50 rounded-full overflow-hidden mb-4 sm:mb-6">
+              <div className="h-2 sm:h-2.5 md:h-3 bg-gray-800/50 rounded-full overflow-hidden mb-3 sm:mb-4 md:mb-6">
                 <div
                   className="h-full bg-gradient-to-r from-purple-500 via-purple-600 to-purple-700 transition-all duration-500 ease-out relative"
                   style={{ width: `${progress}%` }}
@@ -417,24 +552,25 @@ const UploadPage = () => {
               </div>
 
               <div className="flex items-center justify-center gap-2 text-gray-400 text-xs sm:text-sm">
-                <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin" />
+                <Loader2 className="w-3 h-3 sm:w-4 sm:h-4 animate-spin flex-shrink-0" />
                 <span className="text-center">Extracting panels, running OCR, generating script and audio...</span>
               </div>
             </div>
           )}
 
+          {/* Extracted panels */}
           {!isProcessing && panelImages.length > 0 && (
-            <div className="mt-4 sm:mt-6 bg-gray-900/30 backdrop-blur-sm p-4 sm:p-6 rounded-xl sm:rounded-2xl border border-purple-500/20">
-              <div className="flex items-center justify-between mb-4 sm:mb-5">
-                <h3 className="font-semibold text-sm sm:text-base md:text-lg flex items-center gap-1.5 sm:gap-2">
-                  <Film className="w-5 h-5 sm:w-5 sm:h-5 md:w-6 md:h-6 text-gray-400 flex-shrink-0" />
+            <div className="mt-4 sm:mt-5 md:mt-6 bg-gray-900/30 backdrop-blur-sm p-3 sm:p-4 md:p-6 rounded-xl sm:rounded-2xl border border-purple-500/20">
+              <div className="flex items-center justify-between mb-3 sm:mb-4 md:mb-5 gap-2">
+                <h3 className="font-semibold text-sm sm:text-base md:text-lg flex items-center gap-1.5 sm:gap-2 min-w-0">
+                  <Film className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-gray-400 flex-shrink-0" />
                   <span className="truncate">Extracted Panels</span>
                 </h3>
-                <span className="px-2 sm:px-3 py-1 bg-purple-500/10 rounded-full text-xs sm:text-sm text-purple-300 border border-purple-500/20 whitespace-nowrap flex-shrink-0">
+                <span className="px-2 sm:px-2.5 md:px-3 py-0.5 sm:py-1 bg-purple-500/10 rounded-full text-xs sm:text-sm text-purple-300 border border-purple-500/20 whitespace-nowrap flex-shrink-0">
                   {panelImages.length} panel{panelImages.length !== 1 ? 's' : ''}
                 </span>
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2 sm:gap-3 md:gap-4">
                 {panelImages.map((url, idx) => (
                   <div key={idx} className="relative group">
                     <img
@@ -442,13 +578,13 @@ const UploadPage = () => {
                       alt={`panel-${idx}`}
                       crossOrigin="anonymous"
                       referrerPolicy="no-referrer"
-                      className="w-full h-32 sm:h-40 md:h-48 object-cover rounded-lg sm:rounded-xl border border-purple-500/20 group-hover:scale-105 transition-all shadow-lg"
+                      className="w-full h-28 sm:h-32 md:h-40 lg:h-48 object-cover rounded-lg sm:rounded-xl border border-purple-500/20 group-hover:scale-105 transition-all shadow-lg"
                       onError={(e) => {
                           console.warn("Failed to load image:", url);
                           e.target.style.opacity = 0.5;
                       }}
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg sm:rounded-xl flex items-end justify-center pb-2">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg sm:rounded-xl flex items-end justify-center pb-1.5 sm:pb-2">
                       <span className="text-xs text-white font-medium">Panel {idx + 1}</span>
                     </div>
                   </div>
@@ -457,22 +593,24 @@ const UploadPage = () => {
             </div>
           )}
 
+          {/* Error message */}
           {error && (
-            <div className="mt-4 p-3 sm:p-4 bg-red-500/10 backdrop-blur-sm border border-red-500/30 rounded-xl flex gap-3 animate-pulse">
-              <AlertCircle className="w-5 h-5 sm:w-6 sm:h-6 text-red-400 flex-shrink-0" />
-              <p className="text-red-300 text-sm sm:text-base">{error}</p>
+            <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-red-500/10 backdrop-blur-sm border border-red-500/30 rounded-lg sm:rounded-xl flex gap-2 sm:gap-3 animate-pulse">
+              <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-red-400 flex-shrink-0" />
+              <p className="text-red-300 text-xs sm:text-sm md:text-base">{error}</p>
             </div>
           )}
         </div>
 
-        <div className="bg-gray-900/30 backdrop-blur-sm border border-purple-500/20 rounded-xl sm:rounded-2xl p-4 sm:p-6">
-          <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-            <Settings className="w-5 h-5 sm:w-6 sm:h-6 text-purple-400" />
-            <h3 className="text-lg sm:text-xl font-semibold">Settings</h3>
+        {/* Settings sidebar */}
+        <div className="bg-gray-900/30 backdrop-blur-sm border border-purple-500/20 rounded-xl sm:rounded-2xl p-4 sm:p-5 md:p-6 h-fit">
+          <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-5 md:mb-6">
+            <Settings className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-purple-400 flex-shrink-0" />
+            <h3 className="text-base sm:text-lg md:text-xl font-semibold">Settings</h3>
           </div>
 
-          <label className="text-xs sm:text-sm text-gray-400 font-medium mb-3 block">Generation Mode</label>
-          <div className="space-y-2 sm:space-y-3">
+          <label className="text-xs sm:text-sm text-gray-400 font-medium mb-2 sm:mb-3 block">Generation Mode</label>
+          <div className="space-y-2 sm:space-y-2.5 md:space-y-3">
             {[
               { value: "images", label: "Original Images", icon: FileText, disabled: false },
               { value: "ai", label: "AI Enhanced", icon: Cpu, disabled: true },
@@ -480,7 +618,7 @@ const UploadPage = () => {
             ].map((opt) => (
               <label
                 key={opt.value}
-                className={`block p-3 sm:p-4 rounded-xl border transition-all cursor-pointer ${
+                className={`block p-2.5 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${
                   opt.disabled
                     ? "opacity-50 cursor-not-allowed"
                     : mode === opt.value
@@ -488,7 +626,7 @@ const UploadPage = () => {
                     : "border-gray-700 bg-gray-800/30 hover:bg-gray-800/50 hover:border-purple-500/50"
                 }`}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3">
                   <input
                     type="radio"
                     name="mode"
@@ -496,29 +634,30 @@ const UploadPage = () => {
                     checked={mode === opt.value}
                     onChange={(e) => !opt.disabled && setMode(e.target.value)}
                     disabled={opt.disabled}
-                    className="w-4 h-4 text-purple-500"
+                    className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-500 flex-shrink-0"
                   />
-                  <opt.icon className="w-4 h-4 sm:w-5 sm:h-5 text-purple-400" />
-                  <span className="flex-1 text-sm sm:text-base">{opt.label}</span>
-                  {opt.disabled && <Lock className="w-4 h-4 text-gray-500" />}
+                  <opt.icon className="w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5 text-purple-400 flex-shrink-0" />
+                  <span className="flex-1 text-xs sm:text-sm md:text-base">{opt.label}</span>
+                  {opt.disabled && <Lock className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-gray-500 flex-shrink-0" />}
                 </div>
               </label>
             ))}
           </div>
 
-          <div className="mt-6 sm:mt-8 p-3 sm:p-4 bg-purple-500/5 rounded-xl border border-purple-500/20">
-            <p className="text-xs text-gray-400 leading-relaxed">
-              <strong className="text-purple-700">Note :</strong> AI Enhanced and Hybrid modes are coming soon. Currently using original manga panels for video generation.
+          <div className="mt-4 sm:mt-6 md:mt-8 p-2.5 sm:p-3 md:p-4 bg-purple-500/5 rounded-lg sm:rounded-xl border border-purple-500/20">
+            <p className="text-xs sm:text-xs text-gray-400 leading-relaxed">
+              <strong className="text-purple-700">Note:</strong> AI Enhanced and Hybrid modes are coming soon. Currently using original manga panels for video generation.
             </p>
           </div>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto flex flex-col sm:flex-row gap-4 sm:gap-6 justify-center mb-8 sm:mb-10 lg:mb-12 relative px-4">
+      {/* Action buttons */}
+      <div className="max-w-7xl mx-auto flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-6 justify-center mb-6 sm:mb-8 lg:mb-10 relative">
         <button
           onClick={handleGenerateStory}
           disabled={isProcessing || !file}
-          className={`w-full sm:w-auto px-6 sm:px-8 lg:px-7 py-4 sm:py-5 rounded-full font-bold text-base sm:text-lg transition-all flex items-center justify-center gap-2 sm:gap-3 backdrop-blur-xl border shadow-[0_8px_25px_rgba(255,255,255,0.15)] 
+          className={`w-full sm:w-auto px-5 sm:px-6 md:px-8 py-3.5 sm:py-4 md:py-5 rounded-full font-bold text-sm sm:text-base md:text-lg transition-all flex items-center justify-center gap-2 sm:gap-2.5 md:gap-3 backdrop-blur-xl border shadow-[0_8px_25px_rgba(255,255,255,0.15)] 
   ${
     isProcessing || !file
       ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
@@ -529,18 +668,18 @@ const UploadPage = () => {
         >
           {isProcessing ? (
             <>
-              <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
-              Processing {progress}%
+              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 animate-spin flex-shrink-0" />
+              <span className="whitespace-nowrap">Processing {progress}%</span>
             </>
           ) : storyData ? (
             <>
-              <Cpu className="w-5 h-5 sm:w-6 sm:h-6" />
-              Regenerate Frames
+              <Cpu className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 flex-shrink-0" />
+              <span className="whitespace-nowrap">Regenerate Frames</span>
             </>
           ) : (
             <>
-              <Cpu className="w-5 h-5 sm:w-6 sm:h-6" />
-              Generate Story
+              <Cpu className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 flex-shrink-0" />
+              <span className="whitespace-nowrap">Generate Story</span>
             </>
           )}
         </button>
@@ -548,51 +687,53 @@ const UploadPage = () => {
         <button
           onClick={handleGenerateVideo}
           disabled={!storyData || isGeneratingVideo}
-          className={`w-full sm:w-auto px-6 sm:px-8 lg:px-7 py-4 sm:py-5 rounded-full font-bold text-base sm:text-lg transition-all flex items-center justify-center gap-2 sm:gap-3 backdrop-blur-xl border shadow-[0_8px_25px_rgba(255,255,255,0.15)] 
+          className={`w-full sm:w-auto px-5 sm:px-6 md:px-8 py-3.5 sm:py-4 md:py-5 rounded-full font-bold text-sm sm:text-base md:text-lg transition-all flex items-center justify-center gap-2 sm:gap-2.5 md:gap-3 backdrop-blur-xl border shadow-[0_8px_25px_rgba(255,255,255,0.15)] 
   ${
-    isProcessing || !file
+    !storyData || isGeneratingVideo
       ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
-      : storyData
+      : videoUrl
       ? "bg-gradient-to-r from-purple-400 via-purple-400/80 to-indigo-500 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
-      : "bg-white/10 border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95"
+      : "bg-gradient-to-r from-purple-400 via-purple-400/80 to-indigo-500 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
   }`}
         >
           {isGeneratingVideo ? (
             <>
-              <Loader2 className="w-5 h-5 sm:w-6 sm:h-6 animate-spin" />
-              Generating {videoProgress}%
+              <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 animate-spin flex-shrink-0" />
+              <span className="whitespace-nowrap">Generating {videoProgress}%</span>
             </>
           ) : videoUrl ? (
             <>
-              <Video className="w-5 h-5 sm:w-6 sm:h-6" />
-              Generate Video Again
+              <Video className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 flex-shrink-0" />
+              <span className="whitespace-nowrap hidden sm:inline">Generate Video Again</span>
+              <span className="whitespace-nowrap sm:hidden">Regenerate Video</span>
             </>
           ) : (
             <>
-              <Video className="w-5 h-5 sm:w-6 sm:h-6" />
-              Generate Video
+              <Video className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 flex-shrink-0" />
+              <span className="whitespace-nowrap">Generate Video</span>
             </>
           )}
         </button>
       </div>
 
+      {/* Video generation progress */}
       {isGeneratingVideo && (
-        <div className="max-w-6xl mx-auto mb-8 sm:mb-10 lg:mb-12 relative px-4">
-          <div className="bg-gradient-to-br from-purple-900/20 via-purple-800/10 to-purple-900/20 backdrop-blur-xl p-6 sm:p-8 border border-purple-500/30 rounded-xl sm:rounded-2xl shadow-2xl">
-            <div className="flex items-center gap-2 sm:gap-3 mb-4 sm:mb-6">
-              <Video className="w-6 h-6 sm:w-7 sm:h-7 text-purple-400 animate-pulse" />
-              <h3 className="text-xl sm:text-2xl font-bold">Generating Video</h3>
+        <div className="max-w-7xl mx-auto mb-6 sm:mb-8 lg:mb-10 relative">
+          <div className="bg-gradient-to-br from-purple-900/20 via-purple-800/10 to-purple-900/20 backdrop-blur-xl p-4 sm:p-6 md:p-8 border border-purple-500/30 rounded-xl sm:rounded-2xl shadow-2xl">
+            <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4 md:mb-6">
+              <Video className="w-5 h-5 sm:w-6 sm:h-6 md:w-7 md:h-7 text-purple-500 animate-pulse flex-shrink-0" />
+              <h3 className="text-lg sm:text-xl md:text-2xl font-bold">Generating Video</h3>
             </div>
 
-            <div className="flex justify-between mb-3 text-sm sm:text-base">
+            <div className="flex justify-between mb-2 sm:mb-3 text-xs sm:text-sm md:text-base">
               <span className="text-gray-300 font-medium">Browser Processing</span>
-              <span className="text-white font-bold text-base sm:text-lg">{videoProgress}%</span>
+              <span className="text-white font-bold text-sm sm:text-base md:text-lg">{videoProgress}%</span>
             </div>
 
-            <div className="relative h-3 sm:h-4 bg-black/40 backdrop-blur-sm rounded-full overflow-hidden mb-4 sm:mb-6 border border-purple-500/20">
+            <div className="relative h-2.5 sm:h-3 md:h-4 bg-black/40 backdrop-blur-sm rounded-full overflow-hidden mb-3 sm:mb-4 md:mb-6 border border-purple-500/20">
               <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-purple-400/10 to-purple-500/10"></div>
               <div
-                className="relative h-full bg-gradient-to-r from-purple-600 via-purple-500 to-purple-400 transition-all duration-300 ease-out"
+                className="relative h-full bg-gradient-to-r from-pink-400/50 via-purple-500/50 to-purple-700/60 transition-all duration-300 ease-out"
                 style={{ width: `${videoProgress}%` }}
               >
                 <div className="absolute inset-0 bg-gradient-to-b from-white/30 via-white/10 to-transparent"></div>
@@ -605,9 +746,9 @@ const UploadPage = () => {
               ></div>
             </div>
 
-            <div className="bg-black/60 backdrop-blur-sm rounded-xl p-4 sm:p-5 max-h-40 sm:max-h-48 overflow-y-auto border border-purple-500/10 mb-4">
+            <div className="bg-black/60 backdrop-blur-sm rounded-lg sm:rounded-xl p-3 sm:p-4 md:p-5 max-h-32 sm:max-h-40 md:max-h-48 overflow-y-auto border border-purple-500/10 mb-3 sm:mb-4">
               {videoLogs.map((log, idx) => (
-                <div key={idx} className="text-xs sm:text-sm text-purple-300 font-mono mb-2 flex items-start gap-2">
+                <div key={idx} className="text-xs sm:text-sm text-purple-300 font-mono mb-1.5 sm:mb-2 flex items-start gap-1.5 sm:gap-2">
                   <span className="text-purple-500 flex-shrink-0">&gt;</span>
                   <span className="break-all">{log}</span>
                 </div>
@@ -617,33 +758,35 @@ const UploadPage = () => {
         </div>
       )}
 
+      {/* Video player */}
       {videoUrl && !isGeneratingVideo && (
-        <div className="max-w-6xl mx-auto mb-20 relative px-4">
+        <div className="max-w-7xl mx-auto mb-12 sm:mb-16 md:mb-20 relative">
           <div
             ref={videoContainerRef}
-            className="bg-gradient-to-br from-gray-900/10 via-black/10 to-gray-900/10 rounded-2xl overflow-hidden shadow-2xl border border-purple-500/30"
+            className="bg-gradient-to-br from-gray-900/10 via-black/10 to-gray-900/10 rounded-xl sm:rounded-2xl overflow-hidden shadow-2xl border border-purple-500/30"
           >
-            <div className="p-5 sm:p-6 border-b border-purple-500/20 bg-gradient-to-r from-purple-900/30 via-purple-800/20 to-purple-900/30 backdrop-blur-sm">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-transparent flex items-center justify-center">
-                    <CheckCircle className="w-6 h-6 text-white" />
+            <div className="p-4 sm:p-5 md:p-6 border-b border-purple-500/20 bg-gradient-to-r from-purple-900/30 via-purple-800/20 to-purple-900/30 backdrop-blur-sm">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-4">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0 w-full sm:w-auto">
+                  <div className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-full bg-gradient-to-br from-purple-400 to-transparent flex items-center justify-center flex-shrink-0">
+                    <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
                   </div>
-                  <div>
-                    <h3 className="text-xl sm:text-2xl font-bold text-white">Video Ready</h3>
-                    <p className="text-sm text-gray-400">
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-base sm:text-xl md:text-2xl font-bold text-white truncate">Video Ready</h3>
+                    <p className="text-xs sm:text-sm text-gray-400 truncate">
                       Your manga video has been generated successfully
                     </p>
                   </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-2 sm:gap-3 w-full sm:w-auto justify-end">
                   <button
                     onClick={handleDownload}
-                    className="p-3 rounded-lg bg-black/80 backdrop-blur-md transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-purple-500/50 shadow-lg hover:scale-110"
+                    className="flex-1 sm:flex-initial px-4 sm:px-0 py-2 sm:py-0 sm:p-2.5 md:p-3 rounded-lg bg-black/80 backdrop-blur-md transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-purple-500/50 shadow-lg hover:scale-110"
                     title="Download Video"
                   >
-                    <Download className="w-5 h-5" />
+                    <Download className="w-4 h-4 sm:w-5 sm:h-5" />
+                    <span className="text-sm sm:hidden">Download</span>
                   </button>
                 </div>
               </div>
@@ -670,19 +813,19 @@ const UploadPage = () => {
               </div>
             </div>
 
-            <div className="bg-gradient-to-r from-transparent via-black/40 to-transparent border-t border-purple-500/20 p-4 sm:p-5">
-              <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 text-xs sm:text-sm text-gray-300">
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-transparent">
-                  <Film className="w-4 h-4 text-yellow-400" />
-                  <span>Browser Generated</span>
+            <div className="hidden md:block bg-gradient-to-r from-transparent via-black/40 to-transparent border-t border-purple-500/20 p-3 sm:p-4 md:p-5">
+              <div className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 md:gap-8 text-xs sm:text-sm text-gray-300">
+                <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-transparent">
+                  <Film className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 flex-shrink-0" />
+                  <span className="whitespace-nowrap">Browser Generated</span>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20">
-                  <Zap className="w-4 h-4 text-yellow-400" />
-                  <span>Zero Server Cost</span>
+                <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-transparent">
+                  <Zap className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 flex-shrink-0" />
+                  <span className="whitespace-nowrap">Zero Server Cost</span>
                 </div>
-                <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20">
-                  <Cpu className="w-4 h-4 text-yellow-400" />
-                  <span>FFmpeg.wasm</span>
+                <div className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-transparent">
+                  <Cpu className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-yellow-400 flex-shrink-0" />
+                  <span className="whitespace-nowrap">FFmpeg.wasm</span>
                 </div>
               </div>
             </div>

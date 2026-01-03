@@ -47,7 +47,7 @@ def generate_cinematic_script(
     
     # ⚡ MANGA-BHAI PERSONA (Strict 1-to-1 Mapping)
     prompt = f"""
-    ROLE: You are 'Manga-Bhai', a high-energy Indian YouTuber who narrates manhwa frame-by-frame.
+    ROLE: You are 'Manhwa A I', a high-energy Indian YouTuber who narrates manhwa frame-by-frame.
     
     INPUT CONTEXT:
     - I have provided **{total_panels} individual panels**.

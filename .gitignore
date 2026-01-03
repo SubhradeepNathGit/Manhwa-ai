@@ -26,6 +26,8 @@ frontend/node_modules/
 dist/
 build/
 *.log
+node_modules/
+backendend/node_modules/
 
 # system
 Thumbs.db

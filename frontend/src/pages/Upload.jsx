@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import Swal from "sweetalert2";
+import { showToast } from "../utils/toast";
 import {
   Upload,
   Download,
@@ -112,14 +112,10 @@ const UploadPage = () => {
   }, [videoUrl]);
 
   // Resume video generation if it was interrupted
-  // Resume video generation if it was interrupted
   const resumeVideoGeneration = async (data) => {
     try {
       setVideoLogs(prev => [...prev, "Resuming video generation..."]);
       
-      // ⚡ REMOVED: await loadFFmpeg(...) 
-      // WebCodecs is native, so we just start immediately.
-
       setVideoLogs(prev => [...prev, "Video engine ready, continuing generation..."]);
 
       const result = await generateVideoFromScenes({
@@ -127,7 +123,6 @@ const UploadPage = () => {
         audioUrl: data.audio_url,
         scenes: data.final_video_segments,
         onProgress: (p) => {
-          // WebCodecs is fast, so we map 0-100 directly
           const safeProgress = Math.min(Math.floor(p), 100);
           setVideoProgress(safeProgress);
           setMaxVideoProgress(safeProgress);
@@ -144,14 +139,7 @@ const UploadPage = () => {
         setIsGeneratingVideo(false);
       }, 500);
 
-      Swal.fire({
-        title: "Video Generated!",
-        text: "Your video has been successfully generated.",
-        icon: "success",
-        confirmButtonColor: "#9333ea",
-        background: "#1a1a1a",
-        color: "#fff"
-      });
+      showToast.success("Video generated successfully!");
 
     } catch (err) {
       console.error("Resume video generation error:", err);
@@ -159,6 +147,7 @@ const UploadPage = () => {
       setIsGeneratingVideo(false);
       setVideoProgress(0);
       setMaxVideoProgress(0);
+      showToast.error(err.message || "Video generation failed");
     }
   };
 
@@ -181,10 +170,12 @@ const UploadPage = () => {
     if (!fileToValidate) return false;
     if (!fileToValidate.type.includes("pdf")) {
       setError("Please upload a PDF file");
+      showToast.error("Please upload a PDF file");
       return false;
     }
     if (fileToValidate.size > 50 * 1024 * 1024) {
       setError("PDF must be < 50MB");
+      showToast.error("PDF file size must be less than 50MB");
       return false;
     }
     setError(null);
@@ -238,6 +229,7 @@ const UploadPage = () => {
   const handleGenerateStory = async () => {
     if (!file || file.size === 0) {
       setError("Please upload a PDF first");
+      showToast.error("Please upload a PDF first");
       return;
     }
 
@@ -280,14 +272,7 @@ const UploadPage = () => {
         setIsProcessing(false);
       }, 500);
 
-      Swal.fire({
-        title: "Story Ready!",
-        text: `${data.total_panels} panels, ${data.total_duration}s duration. Click "Generate Video" to create final video!`,
-        icon: "success",
-        confirmButtonColor: "#9333ea",
-        background: "#1a1a1a",
-        color: "#fff"
-      });
+      showToast.successLong(`Story Ready! ${data.total_panels} panels, ${data.total_duration}s duration. Click "Generate Video" to create final video!`);
 
     } catch (err) {
       if (progressInterval) clearInterval(progressInterval);
@@ -295,33 +280,23 @@ const UploadPage = () => {
       setError(err.message || String(err));
       setIsProcessing(false);
       setProgress(0);
+      showToast.error(err.message || "Story generation failed");
     }
   };
 
   const handleGenerateVideo = async () => {
     if (!user) {
-        // ... (Keep your existing Login check code here) ...
-        const result = await Swal.fire({
-            title: "Login Required",
-            text: "You must be logged in to generate the final video.",
-            icon: "info",
-            showCancelButton: true,
-            confirmButtonText: "Login Now",
-            cancelButtonText: "Cancel",
-            confirmButtonColor: "#9333ea",
-            cancelButtonColor: "#d33",
-            background: "#1a1a1a",
-            color: "#fff"
-        });
-
-        if (result.isConfirmed) {
-            navigate("/login", { state: { from: location.pathname } });
-        }
+        showToast.info("Login Required. Redirecting to login page...");
+        
+        setTimeout(() => {
+          navigate("/login", { state: { from: location.pathname } });
+        }, 2000);
         return;
     }
 
     if (!storyData) {
       setError("Please generate story first");
+      showToast.error("Please generate story first");
       return;
     }
 
@@ -341,9 +316,6 @@ const UploadPage = () => {
         sessionStorage.setItem("videoLogs", JSON.stringify(newLogs));
         return newLogs;
       });
-
-      // ⚡ REMOVED: await loadFFmpeg(...)
-      // We do NOT need to load anything anymore.
 
       setVideoLogs(prev => {
         const newLogs = [...prev, "Starting optimized video generation..."];
@@ -386,6 +358,8 @@ const UploadPage = () => {
         sessionStorage.removeItem("videoLogs");
       }, 500);
 
+      showToast.success("Video generated successfully!");
+
       console.log("Video generated:", result);
 
     } catch (err) {
@@ -397,6 +371,7 @@ const UploadPage = () => {
       sessionStorage.removeItem("isGeneratingVideo");
       sessionStorage.removeItem("videoProgress");
       sessionStorage.removeItem("videoLogs");
+      showToast.error(err.message || "Video generation failed");
     }
   };
 
@@ -410,27 +385,9 @@ const UploadPage = () => {
   const handleDownload = () => {
     if (videoBlob) {
       downloadVideo(videoBlob, `${mangaName}.mp4`);
+      showToast.successBottom("Video downloaded successfully!");
     }
   };
-
-  // const toggleFullscreen = () => {
-  //   if (!videoContainerRef.current) return;
-  //   if (!isFullscreen) {
-  //     if (videoContainerRef.current.requestFullscreen) {
-  //       videoContainerRef.current.requestFullscreen();
-  //     } else if (videoContainerRef.current.webkitRequestFullscreen) {
-  //       videoContainerRef.current.webkitRequestFullscreen();
-  //     }
-  //     setIsFullscreen(true);
-  //   } else {
-  //     if (document.exitFullscreen) {
-  //       document.exitFullscreen();
-  //     } else if (document.webkitExitFullscreen) {
-  //       document.webkitExitFullscreen();
-  //     }
-  //     setIsFullscreen(false);
-  //   }
-  // };
 
   useEffect(() => {
     const handleFullscreenChange = () => {

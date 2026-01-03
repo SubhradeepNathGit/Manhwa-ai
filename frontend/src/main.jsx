@@ -12,7 +12,6 @@ createRoot(document.getElementById("root")).render(
 
     <StrictMode>
     <QueryClientProvider client={queryClient}>
-      {/* 👇 2. Wrap the Router with AuthProvider */}
       <AuthProvider>
         <Router>
           <App />

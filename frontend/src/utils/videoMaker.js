@@ -1,174 +1,137 @@
-
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import * as Mp4Muxer from 'mp4-muxer';
 
 // =====================================================================
-// FFmpeg Instance (Singleton)
+// Constants (Optimized for Speed & Stability)
 // =====================================================================
-let ffmpegInstance = null;
-let isFFmpegLoaded = false;
-
-export async function loadFFmpeg(onProgress) {
-  if (isFFmpegLoaded && ffmpegInstance) {
-    console.log('[FFmpeg] Already loaded, reusing instance');
-    return ffmpegInstance;
-  }
-
-  try {
-    console.log('[FFmpeg] Loading FFmpeg.wasm...');
-
-    const ffmpeg = new FFmpeg();
-
-    ffmpeg.on('log', ({ message }) => {
-      console.log('[FFmpeg]', message);
-    });
-
-    ffmpeg.on('progress', ({ progress }) => {
-      if (onProgress) {
-        onProgress(Math.round(progress * 100));
-      }
-    });
-
-    const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
-
-    await ffmpeg.load({
-      coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-    });
-
-    console.log('[FFmpeg] Loaded successfully');
-
-    ffmpegInstance = ffmpeg;
-    isFFmpegLoaded = true;
-
-    return ffmpeg;
-
-  } catch (error) {
-    console.error('[FFmpeg] Failed to load:', error);
-    throw new Error('Failed to load video processor');
-  }
-}
+// ⚡ FIX 1: 720p fits within the 'Level 3.1' codec limit (fixing NotSupportedError)
+const CANVAS_WIDTH = 720;
+const CANVAS_HEIGHT = 1280;
+// ⚡ FIX 2: 24 FPS is standard for Anime and 20% faster to render than 30 FPS
+const FPS = 24; 
+const VIDEO_BITRATE = 2_500_000; // 2.5 Mbps
 
 // =====================================================================
-// Download Helper (with retry)
+// Helpers
 // =====================================================================
 async function downloadImage(url, filename, retries = 3) {
   for (let i = 0; i < retries; i++) {
     try {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      return await response.arrayBuffer();
+      return await response.blob(); 
     } catch (error) {
-      if (i === retries - 1) {
-        console.error(`[Download] Failed ${filename} after ${retries} attempts:`, error);
-        throw error;
-      }
-      console.warn(`[Download] Retry ${i + 1}/${retries} for ${filename}`);
+      if (i === retries - 1) throw error;
       await new Promise(resolve => setTimeout(resolve, 1000));
     }
   }
 }
 
 // =====================================================================
-// Quick dimension detection (browser-based)
+// Canvas Drawer (Zoom/Pan Logic)
 // =====================================================================
-async function getImageDimensions(blob) {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    const url = URL.createObjectURL(blob);
+function drawFrameToCanvas(ctx, img, progress, type) {
+  const { width: imgW, height: imgH } = img;
+  
+  // Clear background
+  ctx.fillStyle = 'black';
+  ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
-    img.onload = () => {
-      URL.revokeObjectURL(url);
-      resolve({ width: img.width, height: img.height });
-    };
+  const contentWidth = Math.floor(CANVAS_WIDTH * 1.0);
+  const destX = (CANVAS_WIDTH - contentWidth) / 2; 
 
-    img.onerror = () => {
-      URL.revokeObjectURL(url);
-      reject(new Error('Failed to load image'));
-    };
+  if (type === 'pan_down') {
+    const scale = contentWidth / imgW;
+    const scaledH = imgH * scale;
+    const destH = CANVAS_HEIGHT; 
+    const hiddenHeight = scaledH - destH;
+    
+    let drawY = 0 - (hiddenHeight * progress);
+    if (hiddenHeight <= 0) drawY = (CANVAS_HEIGHT - scaledH) / 2;
 
-    img.src = url;
-  });
-}
-
-// =====================================================================
-// Smart Animation Filter (60% content area)
-// =====================================================================
-function getAnimationFilter(
-  imageWidth,
-  imageHeight,
-  duration,
-  canvasWidth = 1080,
-  canvasHeight = 1920
-) {
-  const fps = 24;
-  const totalFrames = Math.floor(duration * fps);
-
-  // Content area = 60% of canvas width
-  const contentWidth = Math.floor(canvasWidth * 0.6);   // 648px
-  const leftPadding = Math.floor(canvasWidth * 0.2);    // 216px
-
-  // Calculate aspect ratios
-  const imageAspect = imageHeight / imageWidth;
-  const contentAspect = canvasHeight / contentWidth;
-
-  // console.log(`[Filter] Image ${imageWidth}x${imageHeight}, Aspect: ${imageAspect.toFixed(2)}`);
-
-  // =====================================================================
-  // TALL IMAGES - Pan down (scroll)
-  // =====================================================================
-  if (imageAspect > contentAspect * 1.3) {
-    const scaledWidth = contentWidth;
-    const scaledHeight = Math.floor((imageHeight / imageWidth) * contentWidth);
-    const panDistance = scaledHeight - canvasHeight;
-
-    if (panDistance > 0) {
-      // Scroll from top to bottom
-      return `scale=${scaledWidth}:${scaledHeight},` +
-        `pad=${canvasWidth}:${scaledHeight}:${leftPadding}:0:black,` +
-        `crop=${canvasWidth}:${canvasHeight}:0:'(ih-oh)*t/${duration}':exact=1`;
-    } else {
-      // Not tall enough to scroll, just center
-      return `scale=${scaledWidth}:${scaledHeight},` +
-        `pad=${canvasWidth}:${canvasHeight}:${leftPadding}:(oh-ih)/2:black`;
-    }
-  }
-
-  // =====================================================================
-  // SHORT IMAGES - Zoom effect
-  // =====================================================================
-  else if (imageAspect < contentAspect * 0.7) {
-    const scaledHeight = canvasHeight;
-    const scaledWidth = Math.floor((imageWidth / imageHeight) * canvasHeight);
-    const finalWidth = Math.min(scaledWidth, contentWidth);
-    const finalHeight = Math.floor((imageHeight / imageWidth) * finalWidth);
-
-    return `scale=${Math.floor(finalWidth * 1.15)}:${Math.floor(finalHeight * 1.15)},` +
-      `zoompan=z='min(zoom+0.0008,1.1)':d=${totalFrames}:` +
-      `x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':` +
-      `s=${finalWidth}x${finalHeight}:fps=${fps},` +
-      `pad=${canvasWidth}:${canvasHeight}:${leftPadding + (contentWidth - finalWidth) / 2}:(oh-ih)/2:black`;
-  }
-
-  // =====================================================================
-  // NORMAL IMAGES - Static with subtle zoom
-  // =====================================================================
+    ctx.drawImage(img, destX, drawY, contentWidth, scaledH);
+  } 
   else {
-    const scaledHeight = canvasHeight;
-    const scaledWidth = Math.floor((imageWidth / imageHeight) * canvasHeight);
-    const finalWidth = Math.min(scaledWidth, contentWidth);
-    const finalHeight = Math.floor((imageHeight / imageWidth) * finalWidth);
+    // Zoom Effect
+    const zoomLevel = 1.0 + (0.15 * progress); 
+    const srcW = imgW / zoomLevel;
+    const srcH = imgH / zoomLevel;
+    const srcX = (imgW - srcW) / 2;
+    const srcY = (imgH - srcH) / 2;
 
-    return `scale=${finalWidth}:${finalHeight},` +
-      `zoompan=z='1.0+0.0003*on':d=${totalFrames}:` +
-      `x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':` +
-      `s=${finalWidth}x${finalHeight}:fps=${fps},` +
-      `pad=${canvasWidth}:${canvasHeight}:${leftPadding + (contentWidth - finalWidth) / 2}:(oh-ih)/2:black`;
+    const imgAspect = imgW / imgH;
+    let drawW = contentWidth;
+    let drawH = contentWidth / imgAspect;
+    const drawY = (CANVAS_HEIGHT - drawH) / 2;
+
+    ctx.drawImage(img, srcX, srcY, srcW, srcH, destX, drawY, drawW, drawH);
   }
 }
 
+function determineEffectType(img) {
+  const imageAspect = img.height / img.width;
+  const contentAspect = CANVAS_HEIGHT / CANVAS_WIDTH;
+  return (imageAspect > contentAspect * 1.5) ? 'pan_down' : 'zoom';
+}
+
 // =====================================================================
-// MAIN FUNCTION (FIXED)
+// Audio Processor
+// =====================================================================
+async function processAudio(audioUrl, muxer) {
+  const response = await fetch(audioUrl);
+  const arrayBuffer = await response.arrayBuffer();
+  const audioCtx = new AudioContext();
+  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+  
+  const audioEncoder = new AudioEncoder({
+    output: (chunk, meta) => muxer.addAudioChunk(chunk, meta),
+    error: (e) => console.error(e)
+  });
+
+  audioEncoder.configure({
+    codec: 'mp4a.40.2', 
+    numberOfChannels: audioBuffer.numberOfChannels,
+    sampleRate: audioBuffer.sampleRate,
+    bitrate: 128000
+  });
+
+  const numberOfChannels = audioBuffer.numberOfChannels;
+  const length = audioBuffer.length;
+  const sampleRate = audioBuffer.sampleRate;
+  const chunkSize = sampleRate * 1; 
+  
+  for (let frame = 0; frame < length; frame += chunkSize) {
+    const size = Math.min(chunkSize, length - frame);
+    const data = new Float32Array(size * numberOfChannels);
+    
+    for (let ch = 0; ch < numberOfChannels; ch++) {
+      const channelData = audioBuffer.getChannelData(ch);
+      for (let i = 0; i < size; i++) {
+        data[i * numberOfChannels + ch] = channelData[frame + i];
+      }
+    }
+
+    const audioData = new AudioData({
+      format: 'f32',
+      sampleRate: sampleRate,
+      numberOfChannels: numberOfChannels,
+      numberOfFrames: size,
+      timestamp: (frame / sampleRate) * 1_000_000,
+      data: data
+    });
+
+    audioEncoder.encode(audioData);
+    audioData.close();
+    
+    // Yield to keep UI responsive
+    await new Promise(r => setTimeout(r, 0));
+  }
+
+  await audioEncoder.flush();
+  audioCtx.close();
+}
+
+// =====================================================================
+// MAIN FUNCTION (Optimized)
 // =====================================================================
 export async function generateVideoFromScenes({
   imageUrls,
@@ -177,234 +140,116 @@ export async function generateVideoFromScenes({
   onProgress,
   onLog,
 }) {
-  const log = (msg) => {
-    console.log(msg);
-    if (onLog) onLog(msg);
-  };
+  const log = (msg) => { console.log(msg); if (onLog) onLog(msg); };
 
   try {
-    log('[Video] Starting video generation...');
+    log('[WebCodecs] Starting optimized generation...');
 
-    // ⚡ VALIDATION: Check scene data
-    if (!scenes || scenes.length === 0) {
-      throw new Error('No scenes provided');
+    const muxer = new Mp4Muxer.Muxer({
+      target: new Mp4Muxer.ArrayBufferTarget(),
+      video: { codec: 'avc', width: CANVAS_WIDTH, height: CANVAS_HEIGHT },
+      audio: { codec: 'aac', numberOfChannels: 2, sampleRate: 44100 },
+      fastStart: 'in-memory',
+    });
+
+    const videoEncoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta),
+      error: (e) => console.error('[VideoEncoder]', e)
+    });
+
+    // ⚡ FIX 1: This codec settings works perfectly with 720p
+    videoEncoder.configure({
+      codec: 'avc1.42001f', 
+      width: CANVAS_WIDTH,
+      height: CANVAS_HEIGHT,
+      bitrate: VIDEO_BITRATE,
+      framerate: FPS
+    });
+
+    const canvas = new OffscreenCanvas(CANVAS_WIDTH, CANVAS_HEIGHT);
+    const ctx = canvas.getContext('2d');
+
+    // 1. Preload Images
+    log('[Download] Fetching assets...');
+    const imageBitmaps = [];
+    for (let i = 0; i < imageUrls.length; i++) {
+      const blob = await downloadImage(imageUrls[i]);
+      const bmp = await createImageBitmap(blob);
+      imageBitmaps.push(bmp);
     }
-
-    log(`[Video] Processing ${scenes.length} scenes with ${imageUrls.length} images`);
-
-    // ------------------------------------------------------------------------
-    // 🔍 SMART SEQUENCE DETECTOR
-    // If backend assigns "0" to every scene but we have multiple images,
-    // we force sequential distribution (0->0, 1->1, 2->2)
-    // ------------------------------------------------------------------------
-    let shouldForceSequential = false;
-    if (imageUrls.length > 1) {
-      const assignedIndices = scenes.map(s => s.image_page_index);
-      const uniqueIndices = new Set(assignedIndices.filter(idx => idx !== undefined && idx !== null));
-      
-      // Check if all assigned indices are 0 or "0"
-      const allZero = uniqueIndices.size === 1 && (uniqueIndices.has(0) || uniqueIndices.has("0"));
-      
-      // Check if indices are missing entirely
-      const allMissing = uniqueIndices.size === 0;
-
-      if (allZero || allMissing) {
-        shouldForceSequential = true;
-        log('⚠ DETECTED BROKEN SCENE INDICES (All 0 or Missing).');
-        log('⚡ Enabling Smart Fix: Forcing sequential display (Scene 1->Img 1, Scene 2->Img 2...)');
-      }
-    }
-
-    const ffmpeg = await loadFFmpeg(onProgress);
-
-    log('[Download] Downloading all assets...');
-
-    // Download everything in parallel
-    const downloadPromises = [
-      ...imageUrls.map((url, idx) =>
-        downloadImage(url, `image_${idx}.jpg`).then(buffer => ({ buffer, idx }))
-      ),
-      fetch(audioUrl).then(r => r.arrayBuffer()).then(buffer => ({ buffer, isAudio: true }))
-    ];
-
-    const downloads = await Promise.all(downloadPromises);
-
-    const imageData = downloads.filter(d => !d.isAudio).sort((a, b) => a.idx - b.idx);
-    const audioBuffer = downloads.find(d => d.isAudio).buffer;
-
-    log(`[Download] Downloaded ${imageData.length} images and audio`);
-
-    // Write files to FFmpeg
-    log('[FFmpeg] Writing files to memory...');
-    for (let i = 0; i < imageData.length; i++) {
-      await ffmpeg.writeFile(`image_${i}.jpg`, new Uint8Array(imageData[i].buffer));
-    }
-    await ffmpeg.writeFile('audio.mp3', new Uint8Array(audioBuffer));
-
-    log('[FFmpeg] Files loaded');
-
-    // =====================================================================
-    // ⚡ FIX: Generate clips
-    // =====================================================================
-    log('[Encode] Generating clips...');
-
-    const videoClips = [];
-
+    
+    let globalTimestampMicro = 0;
+    
+    // 2. Render Loop (Optimized)
     for (let i = 0; i < scenes.length; i++) {
       const scene = scenes[i];
+      let imgIdx = scene.image_page_index ?? (i % imageBitmaps.length);
+      if (typeof imgIdx !== 'number' || isNaN(imgIdx)) imgIdx = i % imageBitmaps.length;
+      imgIdx = Math.min(imgIdx, imageBitmaps.length - 1);
 
-      let imageIndex;
+      const img = imageBitmaps[imgIdx];
+      const effectType = determineEffectType(img);
+      const durationSec = scene.duration || 3.0;
+      const totalFrames = Math.ceil(durationSec * FPS);
 
-      if (shouldForceSequential) {
-        // FORCE SEQUENTIAL (Fixes the bug)
-        imageIndex = i % imageUrls.length;
-      } else {
-        // USE BACKEND INDEX (Normal logic)
-        let rawIndex = scene.image_page_index;
+      log(`[Render] Scene ${i + 1}/${scenes.length}: ${durationSec}s (${totalFrames} frames)`);
+
+      for (let frame = 0; frame < totalFrames; frame++) {
+        const progress = frame / totalFrames;
+
+        drawFrameToCanvas(ctx, img, progress, effectType);
+
+        const videoFrame = new VideoFrame(canvas, {
+          timestamp: globalTimestampMicro,
+          duration: 1000000 / FPS 
+        });
+
+        // ⚡ FIX 2: Prevent "Codec reclaimed" by pausing if queue is full
+        if (videoEncoder.encodeQueueSize > 5) {
+           await new Promise(r => setTimeout(r, 5));
+        }
+
+        videoEncoder.encode(videoFrame, { keyFrame: frame % 60 === 0 });
+        videoFrame.close();
+
+        globalTimestampMicro += (1000000 / FPS);
         
-        // Parse strings "0" -> 0
-        if (typeof rawIndex === 'string' && !isNaN(parseInt(rawIndex, 10))) {
-          rawIndex = parseInt(rawIndex, 10);
-        }
-
-        if (typeof rawIndex === 'number' && !isNaN(rawIndex)) {
-          imageIndex = rawIndex;
-        } else {
-          imageIndex = i % imageUrls.length; // Fallback
+        // ⚡ FIX 3: Critical yield to Main Thread to prevent browser hang
+        if (frame % 10 === 0) {
+           await new Promise(r => setTimeout(r, 0));
         }
       }
+      
+      if (onProgress) onProgress(((i+1) / scenes.length) * 80);
+    }
 
-      // Clamp to valid range
-      imageIndex = Math.max(0, Math.min(imageIndex, imageUrls.length - 1));
-
-      const duration = scene.duration || 3.0;
-      const inputFile = `image_${imageIndex}.jpg`;
-      const outputFile = `clip_${i}.mp4`;
-
-      log(`[Encode] Clip ${i + 1}/${scenes.length} → Using ${inputFile} (Duration: ${duration}s)`);
-
-      // Detect dimensions
-      let imageWidth = 1080;
-      let imageHeight = 1920;
-
+    // 3. Audio Encoding
+    if (audioUrl) {
+      log('[Audio] Mixing audio...');
       try {
-        const tempData = await ffmpeg.readFile(inputFile);
-        const tempBlob = new Blob([tempData.buffer], { type: 'image/jpeg' });
-        const dims = await getImageDimensions(tempBlob);
-        imageWidth = dims.width;
-        imageHeight = dims.height;
-      } catch (err) {
-        log(`[Encode] ⚠ Using default dimensions for panel ${imageIndex}`);
-      }
-
-      // Get animation filter
-      const filter = getAnimationFilter(
-        imageWidth,
-        imageHeight,
-        duration,
-        1080,
-        1920
-      );
-
-      // Generate clip
-      await ffmpeg.exec([
-        '-loop', '1',
-        '-i', inputFile,
-        '-vf', filter,
-        '-t', duration.toString(),
-        '-c:v', 'libx264',
-        '-preset', 'ultrafast',
-        '-crf', '28',
-        '-pix_fmt', 'yuv420p',
-        '-r', '24',
-        '-movflags', '+faststart',
-        outputFile,
-      ]);
-
-      videoClips.push(outputFile);
-
-      // Update progress
-      if (onProgress) {
-        const clipProgress = ((i + 1) / scenes.length) * 70;
-        onProgress(10 + clipProgress);
+        await processAudio(audioUrl, muxer);
+      } catch (e) {
+        log('[Audio] Error: ' + e.message);
       }
     }
 
-    log('[Encode] All clips generated');
+    log('[Finalize] Saving video...');
+    await videoEncoder.flush();
+    muxer.finalize();
 
-    // =====================================================================
-    // Concatenate clips
-    // =====================================================================
-    log('[Merge] Merging clips in sequence...');
-
-    const concatContent = videoClips.map(clip => `file '${clip}'`).join('\n');
-    await ffmpeg.writeFile('concat.txt', concatContent);
-
-    await ffmpeg.exec([
-      '-f', 'concat',
-      '-safe', '0',
-      '-i', 'concat.txt',
-      '-c', 'copy',
-      'video_no_audio.mp4',
-    ]);
-
-    if (onProgress) onProgress(85);
-    log('[Merge] Clips merged');
-
-    // =====================================================================
-    // Add audio
-    // =====================================================================
-    log('[Audio] Adding audio track...');
-
-    await ffmpeg.exec([
-      '-i', 'video_no_audio.mp4',
-      '-i', 'audio.mp3',
-      '-c:v', 'copy',
-      '-c:a', 'aac',
-      '-b:a', '128k',
-      '-shortest',
-      'final_video.mp4',
-    ]);
-
-    if (onProgress) onProgress(95);
-    log('[Audio] Audio merged');
-
-    // Read final video
-    const data = await ffmpeg.readFile('final_video.mp4');
-    const blob = new Blob([data.buffer], { type: 'video/mp4' });
+    const { buffer } = muxer.target;
+    const blob = new Blob([buffer], { type: 'video/mp4' });
     const videoUrl = URL.createObjectURL(blob);
 
+    imageBitmaps.forEach(bmp => bmp.close());
+
     if (onProgress) onProgress(100);
-    log('[Video] Video generation complete!');
+    log('[Done] Video created!');
 
-    // Cleanup (async)
-    setTimeout(async () => {
-      try {
-        for (const clip of videoClips) {
-          await ffmpeg.deleteFile(clip);
-        }
-        await ffmpeg.deleteFile('concat.txt');
-        await ffmpeg.deleteFile('video_no_audio.mp4');
-        await ffmpeg.deleteFile('final_video.mp4');
-
-        for (let i = 0; i < imageData.length; i++) {
-          await ffmpeg.deleteFile(`image_${i}.jpg`);
-        }
-        await ffmpeg.deleteFile('audio.mp3');
-        log('[Cleanup] Cleanup completed');
-      } catch (err) {
-        console.warn('[Cleanup] Warning:', err);
-      }
-    }, 100);
-
-    return {
-      videoUrl,
-      blob,
-      duration: scenes.reduce((sum, s) => sum + (s.duration || 3), 0),
-    };
+    return { videoUrl, blob, duration: globalTimestampMicro / 1000000 };
 
   } catch (error) {
-    console.error('[Video] Generation failed:', error);
+    console.error(error);
     throw error;
   }
 }

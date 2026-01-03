@@ -21,11 +21,7 @@ import {
 } from "lucide-react";
 
 import { generateAudioStory } from '../api/api';
-import {
-  generateVideoFromScenes,
-  downloadVideo,
-  loadFFmpeg
-} from '../utils/videoMaker';
+import { generateVideoFromScenes, downloadVideo } from '../utils/videoMaker';
 
 const UploadPage = () => {
   const [file, setFile] = useState(null);
@@ -47,7 +43,7 @@ const UploadPage = () => {
 
   const fileInputRef = useRef(null);
   const videoContainerRef = useRef(null);
-  const videoGenerationRef = useRef(null);
+  
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -116,27 +112,25 @@ const UploadPage = () => {
   }, [videoUrl]);
 
   // Resume video generation if it was interrupted
+  // Resume video generation if it was interrupted
   const resumeVideoGeneration = async (data) => {
     try {
       setVideoLogs(prev => [...prev, "Resuming video generation..."]);
       
-      await loadFFmpeg((p) => {
-        const safeProgress = Math.min(Math.floor(p), 10);
-        setVideoProgress(prev => Math.max(prev, safeProgress));
-        setMaxVideoProgress(prev => Math.max(prev, safeProgress));
-      });
+      // ⚡ REMOVED: await loadFFmpeg(...) 
+      // WebCodecs is native, so we just start immediately.
 
-      setVideoLogs(prev => [...prev, "Video processor ready, continuing generation..."]);
+      setVideoLogs(prev => [...prev, "Video engine ready, continuing generation..."]);
 
       const result = await generateVideoFromScenes({
         imageUrls: data.image_urls,
         audioUrl: data.audio_url,
         scenes: data.final_video_segments,
         onProgress: (p) => {
-          const actualProgress = 10 + Math.floor(p * 0.90);
-          const safeProgress = Math.min(actualProgress, 100);
-          setVideoProgress(prev => Math.max(prev, safeProgress));
-          setMaxVideoProgress(prev => Math.max(prev, safeProgress));
+          // WebCodecs is fast, so we map 0-100 directly
+          const safeProgress = Math.min(Math.floor(p), 100);
+          setVideoProgress(safeProgress);
+          setMaxVideoProgress(safeProgress);
         },
         onLog: (msg) => setVideoLogs(prev => [...prev, msg]),
       });
@@ -306,9 +300,10 @@ const UploadPage = () => {
 
   const handleGenerateVideo = async () => {
     if (!user) {
+        // ... (Keep your existing Login check code here) ...
         const result = await Swal.fire({
             title: "Login Required",
-            text: "You must be logged in to generate the final video. Your progress will be saved.",
+            text: "You must be logged in to generate the final video.",
             icon: "info",
             showCancelButton: true,
             confirmButtonText: "Login Now",
@@ -336,30 +331,22 @@ const UploadPage = () => {
     setVideoLogs([]);
     setError(null);
 
-    // Save state immediately
     sessionStorage.setItem("isGeneratingVideo", "true");
     sessionStorage.setItem("videoProgress", "0");
     sessionStorage.setItem("videoLogs", JSON.stringify([]));
 
     try {
       setVideoLogs(prev => {
-        const newLogs = [...prev, "Initializing video processor..."];
+        const newLogs = [...prev, "Initializing WebCodecs video processor..."];
         sessionStorage.setItem("videoLogs", JSON.stringify(newLogs));
         return newLogs;
       });
 
-      await loadFFmpeg((p) => {
-        const safeProgress = Math.min(Math.floor(p), 10);
-        setVideoProgress(prev => {
-          const newProgress = Math.max(prev, safeProgress);
-          sessionStorage.setItem("videoProgress", newProgress.toString());
-          return newProgress;
-        });
-        setMaxVideoProgress(prev => Math.max(prev, safeProgress));
-      });
+      // ⚡ REMOVED: await loadFFmpeg(...)
+      // We do NOT need to load anything anymore.
 
       setVideoLogs(prev => {
-        const newLogs = [...prev, "Video processor loaded successfully", "Starting optimized video generation..."];
+        const newLogs = [...prev, "Starting optimized video generation..."];
         sessionStorage.setItem("videoLogs", JSON.stringify(newLogs));
         return newLogs;
       });
@@ -369,8 +356,7 @@ const UploadPage = () => {
         audioUrl: storyData.audio_url,
         scenes: storyData.final_video_segments,
         onProgress: (p) => {
-          const actualProgress = 10 + Math.floor(p * 0.90);
-          const safeProgress = Math.min(actualProgress, 100);
+          const safeProgress = Math.min(Math.floor(p), 100);
           setVideoProgress(prev => {
             const newProgress = Math.max(prev, safeProgress);
             sessionStorage.setItem("videoProgress", newProgress.toString());
@@ -427,24 +413,24 @@ const UploadPage = () => {
     }
   };
 
-  const toggleFullscreen = () => {
-    if (!videoContainerRef.current) return;
-    if (!isFullscreen) {
-      if (videoContainerRef.current.requestFullscreen) {
-        videoContainerRef.current.requestFullscreen();
-      } else if (videoContainerRef.current.webkitRequestFullscreen) {
-        videoContainerRef.current.webkitRequestFullscreen();
-      }
-      setIsFullscreen(true);
-    } else {
-      if (document.exitFullscreen) {
-        document.exitFullscreen();
-      } else if (document.webkitExitFullscreen) {
-        document.webkitExitFullscreen();
-      }
-      setIsFullscreen(false);
-    }
-  };
+  // const toggleFullscreen = () => {
+  //   if (!videoContainerRef.current) return;
+  //   if (!isFullscreen) {
+  //     if (videoContainerRef.current.requestFullscreen) {
+  //       videoContainerRef.current.requestFullscreen();
+  //     } else if (videoContainerRef.current.webkitRequestFullscreen) {
+  //       videoContainerRef.current.webkitRequestFullscreen();
+  //     }
+  //     setIsFullscreen(true);
+  //   } else {
+  //     if (document.exitFullscreen) {
+  //       document.exitFullscreen();
+  //     } else if (document.webkitExitFullscreen) {
+  //       document.webkitExitFullscreen();
+  //     }
+  //     setIsFullscreen(false);
+  //   }
+  // };
 
   useEffect(() => {
     const handleFullscreenChange = () => {

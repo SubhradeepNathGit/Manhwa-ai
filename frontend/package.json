@@ -12,8 +12,6 @@
     "start": "concurrently -n \"FRONTEND,BACKEND\" -c \"green,blue\" \"npm run dev\" \"npm run dev:backend\""
   },
   "dependencies": {
-    "@ffmpeg/ffmpeg": "^0.12.10",
-    "@ffmpeg/util": "^0.12.1",
     "@supabase/supabase-js": "^2.86.0",
     "@tailwindcss/vite": "^4.1.14",
     "@tanstack/react-query": "^5.90.2",
@@ -25,6 +23,7 @@
     "localforage": "^1.10.0",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.545.0",
+    "mp4-muxer": "^5.2.2",
     "pdf2image": "^1.2.3",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

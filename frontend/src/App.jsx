@@ -4,6 +4,7 @@ import CursorGlow from "./layout/CursorGlow";
 import AnimatedBackground from "./components/home/AnimatedBackground";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import { toastContainerConfig } from './utils/toast';
 
 function App() {
   return (
@@ -15,19 +16,8 @@ function App() {
       {/* App routing */}
       <Routing />
       
-      {/* Toast notifications */}
-      <ToastContainer
-        position="top-right"
-        autoClose={5000}
-        hideProgressBar={false}
-        newestOnTop={false}
-        closeOnClick
-        rtl={false}
-        pauseOnFocusLoss
-        draggable
-        pauseOnHover
-        theme="dark"
-      />
+      {/* Toast notifications with glassmorphism styling */}
+      <ToastContainer {...toastContainerConfig} />
     </>
   );
 }

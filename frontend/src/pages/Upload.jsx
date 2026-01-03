@@ -40,9 +40,11 @@ const UploadPage = () => {
   const [videoLogs, setVideoLogs] = useState([]);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [maxVideoProgress, setMaxVideoProgress] = useState(0);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const fileInputRef = useRef(null);
   const videoContainerRef = useRef(null);
+  const videoRef = useRef(null);
   
   
   const navigate = useNavigate();
@@ -382,10 +384,99 @@ const UploadPage = () => {
     return (bytes / Math.pow(1024, i)).toFixed(2) + " " + sizes[i];
   };
 
-  const handleDownload = () => {
-    if (videoBlob) {
-      downloadVideo(videoBlob, `${mangaName}.mp4`);
-      showToast.successBottom("Video downloaded successfully!");
+  // Enhanced download handler with multiple fallback methods
+  const handleDownload = async () => {
+    if (isDownloading) return;
+    
+    setIsDownloading(true);
+    const fileName = `${mangaName || 'manga-video'}.mp4`;
+
+    try {
+      // Method 1: Try using the stored blob first
+      if (videoBlob) {
+        console.log("Downloading using stored blob...");
+        try {
+          const url = URL.createObjectURL(videoBlob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          
+          // Cleanup
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 100);
+          
+          showToast.successBottom("Video downloaded successfully!");
+          setIsDownloading(false);
+          return;
+        } catch (err) {
+          console.warn("Blob download failed, trying alternative method:", err);
+        }
+      }
+
+      // Method 2: Try fetching from the video URL
+      if (videoUrl) {
+        console.log("Downloading by fetching video URL...");
+        try {
+          const response = await fetch(videoUrl);
+          const blob = await response.blob();
+          
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.style.display = 'none';
+          a.href = url;
+          a.download = fileName;
+          document.body.appendChild(a);
+          a.click();
+          
+          // Cleanup
+          setTimeout(() => {
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+          }, 100);
+          
+          // Store the blob for future downloads
+          setVideoBlob(blob);
+          
+          showToast.successBottom("Video downloaded successfully!");
+          setIsDownloading(false);
+          return;
+        } catch (err) {
+          console.warn("URL fetch download failed, trying direct link:", err);
+        }
+      }
+
+      // Method 3: Try direct download link
+      if (videoUrl) {
+        console.log("Attempting direct download link...");
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = videoUrl;
+        a.download = fileName;
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        
+        setTimeout(() => {
+          document.body.removeChild(a);
+        }, 100);
+        
+        showToast.successBottom("Download initiated!");
+        setIsDownloading(false);
+        return;
+      }
+
+      // If all methods fail
+      throw new Error("No video available for download");
+
+    } catch (err) {
+      console.error("Download error:", err);
+      showToast.error("Failed to download video. Please try again.");
+      setIsDownloading(false);
     }
   };
 
@@ -599,10 +690,10 @@ const UploadPage = () => {
       <div className="max-w-7xl mx-auto flex flex-col sm:flex-row gap-3 sm:gap-4 md:gap-6 justify-center mb-6 sm:mb-8 lg:mb-10 relative">
         <button
           onClick={handleGenerateStory}
-          disabled={isProcessing || !file}
+          disabled={isProcessing || !file || isGeneratingVideo}
           className={`w-full sm:w-auto px-5 sm:px-6 md:px-8 py-3.5 sm:py-4 md:py-5 rounded-full font-bold text-sm sm:text-base md:text-lg transition-all flex items-center justify-center gap-2 sm:gap-2.5 md:gap-3 backdrop-blur-xl border shadow-[0_8px_25px_rgba(255,255,255,0.15)] 
   ${
-    isProcessing || !file
+    isProcessing || !file || isGeneratingVideo
       ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
       : storyData
       ? "bg-gradient-to-r from-purple-400 via-purple-400 to-indigo-500 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
@@ -725,11 +816,21 @@ const UploadPage = () => {
                 <div className="flex gap-2 sm:gap-3 w-full sm:w-auto justify-end">
                   <button
                     onClick={handleDownload}
-                    className="flex-1 sm:flex-initial px-4 sm:px-0 py-2 sm:py-0 sm:p-2.5 md:p-3 rounded-lg bg-black/80 backdrop-blur-md transition-all flex items-center justify-center gap-2 border border-white/10 hover:border-purple-500/50 shadow-lg hover:scale-110"
+                    disabled={isDownloading}
+                    className={`flex-1 sm:flex-initial px-4 sm:px-5 md:px-6 py-2 sm:py-2.5 md:py-3 rounded-lg bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 backdrop-blur-md transition-all flex items-center justify-center gap-2 border border-purple-400/20 shadow-lg hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100`}
                     title="Download Video"
                   >
-                    <Download className="w-4 h-4 sm:w-5 sm:h-5" />
-                    <span className="text-sm sm:hidden">Download</span>
+                    {isDownloading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 sm:w-5 sm:h-5 animate-spin" />
+                        <span className="text-sm font-semibold">Downloading...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <span className="text-sm font-semibold">Download</span>
+                      </>
+                    )}
                   </button>
                 </div>
               </div>
@@ -745,6 +846,7 @@ const UploadPage = () => {
                   />
                 </div>
                 <video
+                  ref={videoRef}
                   controls
                   className="absolute top-0 left-0 w-full h-full object-cover z-10"
                   controlsList="nodownload"

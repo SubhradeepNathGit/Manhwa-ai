@@ -116,7 +116,7 @@ const Contact = () => {
     <div className="min-h-screen text-white relative overflow-hidden">
       
       {/* Content */}
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-20 py-20 lg:py-5">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-0 py-20 lg:py-5">
         
         {/* Header */}
         <motion.div

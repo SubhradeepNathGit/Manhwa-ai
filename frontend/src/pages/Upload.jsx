@@ -20,7 +20,7 @@ import {
   Minimize,
 } from "lucide-react";
 
-import { generateAudioStory } from '../api/api';
+import { generateAudioStory, checkTaskStatus } from '../api/api';
 import { generateVideoFromScenes, downloadVideo } from '../utils/videoMaker';
 
 const UploadPage = () => {
@@ -228,7 +228,7 @@ const UploadPage = () => {
     }
   };
 
-  const handleGenerateStory = async () => {
+const handleGenerateStory = async () => {
     if (!file || file.size === 0) {
       setError("Please upload a PDF first");
       showToast.error("Please upload a PDF first");
@@ -244,41 +244,66 @@ const UploadPage = () => {
     setVideoBlob(null);
     sessionStorage.removeItem("pendingVideoUrl");
 
-    let progressInterval = null;
-
     try {
       const formData = new FormData();
       formData.append("manga_pdf", file);
       formData.append("manga_name", mangaName);
       formData.append("manga_genre", "Action");
 
-      progressInterval = setInterval(() => {
-        setProgress(prev => {
-          if (prev >= 90) return 90;
-          return prev + 10;
-        });
-      }, 500);
+      // 1. START THE TASK (Get Task ID)
+      const startResponse = await generateAudioStory(formData);
+      const taskId = startResponse.task_id;
+      console.log("Task started with ID:", taskId);
 
-      const data = await generateAudioStory(formData);
+      // 2. POLL FOR UPDATES (Every 2 seconds)
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusData = await checkTaskStatus(taskId);
+          console.log("Task Status:", statusData.state);
 
-      if (progressInterval) clearInterval(progressInterval);
-      setProgress(100);
+          if (statusData.state === 'PROCESSING') {
+            // Update progress bar based on real worker progress
+            setProgress(statusData.progress || 20);
+          } 
+          else if (statusData.state === 'SUCCESS') {
+            clearInterval(pollInterval);
+            setProgress(100);
 
-      setStoryData(data);
-      setPanelImages(data.image_urls || []);
-      
-      sessionStorage.setItem("pendingStory", JSON.stringify(data));
-      sessionStorage.setItem("pendingFileName", mangaName);
+            // ⚡ IMPORTANT: The data is inside 'statusData.result'
+            const finalResult = statusData.result;
+            
+            setStoryData(finalResult);
+            // Handle both naming conventions just in case
+            const images = finalResult.image_urls || finalResult.panel_images || [];
+            setPanelImages(images);
+            
+            // Save to session
+            sessionStorage.setItem("pendingStory", JSON.stringify(finalResult));
+            sessionStorage.setItem("pendingFileName", mangaName);
 
-      setTimeout(() => {
-        setIsProcessing(false);
-      }, 500);
+            setTimeout(() => {
+              setIsProcessing(false);
+            }, 500);
 
-      showToast.successLong(`Story Ready! ${data.total_panels} panels, ${data.total_duration}s duration. Click "Generate Video" to create final video!`);
+            showToast.successLong(`Story Ready! ${images.length} panels, ${finalResult.total_duration}s duration. Click "Generate Video" to create final video!`);
+          } 
+          else if (statusData.state === 'FAILURE') {
+            clearInterval(pollInterval);
+            throw new Error(statusData.error || "Generation Failed");
+          }
+        } catch (err) {
+          console.error("Polling Error:", err);
+          // Don't stop polling on network hiccups, only on fatal errors
+          if (err.message.includes("Backend returned non-JSON")) {
+             clearInterval(pollInterval);
+             setError("Server Error: " + err.message);
+             setIsProcessing(false);
+          }
+        }
+      }, 2000); // Check every 2 seconds
 
     } catch (err) {
-      if (progressInterval) clearInterval(progressInterval);
-      console.error("Story generation error:", err);
+      console.error("Story generation initiation error:", err);
       setError(err.message || String(err));
       setIsProcessing(false);
       setProgress(0);

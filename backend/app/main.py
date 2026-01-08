@@ -1,18 +1,11 @@
 # backend/app/main.py
-"""
-AI Manhwa Backend - Clean Restart Version
-Optimized · Stable · No Firebase · Supabase Ready
-"""
-
 import os
 import time
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-# backend/app/main.py  (paste into top with other imports)
 
-# Load .env
 load_dotenv()
 
 
@@ -38,7 +31,7 @@ app.add_middleware(
         "http://127.0.0.1:5173",
         "http://localhost:8080"
 
-        # Your real Vercel domains:
+        # real Vercel domains:
         "https://manhwa-a1wv8f96g-anurag-bitans-projects.vercel.app",
         "https://manhwa-ai-git-main-anurag-bitans-projects.vercel.app",
         "https://manhwa-ai-theta.vercel.app",

@@ -29,3 +29,6 @@ httpx
 # Utilities
 requests
 anyio
+
+celery
+redis

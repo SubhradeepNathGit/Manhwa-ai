@@ -22,43 +22,44 @@ async function fetchWithRetry(url, options, retries = 1) {
   }
 }
 
-
-
-// // Normalize backend response (image_urls / panel_images)
-// function normalizeStoryData(data) {
-//   const imageList = data.image_urls || data.panel_images || [];
-//   return {
-//     ...data,
-//     image_urls: Array.isArray(imageList) ? imageList : [],
-//   };
-// }
-
 // ---------------------------------------------------------
-// 1. Generate Audio Story  (POST /api/v1/generate_audio_story)
+// 1. Start Audio Story Job (POST)
 // ---------------------------------------------------------
-
+// 1. Start Job
 export const generateAudioStory = async (formData) => {
   const response = await fetchWithRetry(
     `${API_URL}/api/v1/generate_audio_story`,
+    { method: "POST", body: formData }
+  );
+
+  if (!response.ok) throw await parseJSONResponse(response);
+  const data = await parseJSONResponse(response);
+  return { task_id: data.task_id }; // Only returns ID now
+};
+
+// // 2. Check Status (New)
+// export const checkTaskStatus = async (taskId) => {
+//   const response = await fetchWithRetry(
+//     `${API_URL}/api/v1/status/${taskId}`,
+//     { method: "GET" }
+//   );
+//   if (!response.ok) throw await parseJSONResponse(response);
+//   return await parseJSONResponse(response);
+// };
+
+// ---------------------------------------------------------
+// 2. Check Job Status (GET) - New Function
+// ---------------------------------------------------------
+export const checkTaskStatus = async (taskId) => {
+  const response = await fetchWithRetry(
+    `${API_URL}/api/v1/status/${taskId}`,
     {
-      method: "POST",
-      body: formData,
+      method: "GET",
     }
   );
 
   if (!response.ok) throw await parseJSONResponse(response);
 
-  const data = await parseJSONResponse(response);
-  return {
-    manga_name: data.manga_name,
-    image_urls: data.image_urls || [],
-    audio_url: data.audio_url,
-    final_video_segments: data.final_video_segments || [],
-    full_narration: data.full_narration || "",
-    processing_time: data.processing_time || 0,
-    total_duration: data.total_duration || 0,
-    total_panels: data.total_panels || 0,
-  };
+  // Returns: { state: "PROCESSING" | "SUCCESS" | "FAILURE", progress: 30, result: {...} }
+  return await parseJSONResponse(response);
 };
-
-

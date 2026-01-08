@@ -24,7 +24,7 @@ services:
       - ./backend/.env
     depends_on:
       - redis
-    command: celery -A app.celery_worker worker --loglevel=info --pool=solo
+    command: celery -A app.celery_worker worker --loglevel=info --concurrency=5
     # ⚡ NEW: Share the SAME folder so Worker can see the PDF
     # volumes:
     #   - ./backend/temp:/app/temp

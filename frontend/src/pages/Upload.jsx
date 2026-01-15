@@ -268,12 +268,24 @@ const handleGenerateStory = async () => {
           else if (statusData.state === 'SUCCESS') {
             clearInterval(pollInterval);
             setProgress(100);
-
-            // ⚡ IMPORTANT: The data is inside 'statusData.result'
-            const finalResult = statusData.result;
+                console.log("🔥 FULL BACKEND RESPONSE:", statusData);
+                console.log("🔥 RESULT OBJECT:", statusData.result);
+                console.log("🔥 IMAGE URLS:", statusData.result?.image_urls);
+            let finalResult = statusData.result;
             
             setStoryData(finalResult);
             // Handle both naming conventions just in case
+            if (typeof finalResult === "string" && finalResult.startsWith("http")) {
+                console.log("📥 Downloading Result JSON from:", finalResult);
+                try {
+                    const response = await fetch(finalResult);
+                    finalResult = await response.json(); // <--- THIS GETS THE REAL DATA
+                } catch (fetchErr) {
+                    console.error("Failed to fetch result JSON", fetchErr);
+                    showToast.error("Failed to load result data");
+                    return;
+                }
+            }
             const images = finalResult.image_urls || finalResult.panel_images || [];
             setPanelImages(images);
             
@@ -287,7 +299,7 @@ const handleGenerateStory = async () => {
 
             showToast.successLong(`Story Ready! ${images.length} panels, ${finalResult.total_duration}s duration. Click "Generate Video" to create final video!`);
           } 
-          else if (statusData.state === 'FAILURE') {
+          else if (statusDatfa.state === 'FAILURE') {
             clearInterval(pollInterval);
             throw new Error(statusData.error || "Generation Failed");
           }
@@ -312,15 +324,14 @@ const handleGenerateStory = async () => {
   };
 
   const handleGenerateVideo = async () => {
+    // 1. Check Login
     if (!user) {
-        showToast.info("Login Required. Redirecting to login page...");
-        
-        setTimeout(() => {
-          navigate("/login", { state: { from: location.pathname } });
-        }, 2000);
+        showToast.info("Login Required. Redirecting...");
+        setTimeout(() => navigate("/login", { state: { from: location.pathname } }), 2000);
         return;
     }
 
+    // 2. Check Data
     if (!storyData) {
       setError("Please generate story first");
       showToast.error("Please generate story first");
@@ -332,76 +343,99 @@ const handleGenerateStory = async () => {
     setMaxVideoProgress(0);
     setVideoLogs([]);
     setError(null);
-
-    sessionStorage.setItem("isGeneratingVideo", "true");
-    sessionStorage.setItem("videoProgress", "0");
-    sessionStorage.setItem("videoLogs", JSON.stringify([]));
-
+    
     try {
-      setVideoLogs(prev => {
-        const newLogs = [...prev, "Initializing WebCodecs video processor..."];
-        sessionStorage.setItem("videoLogs", JSON.stringify(newLogs));
-        return newLogs;
-      });
+        setVideoLogs(prev => [...prev, "Checking story data..."]);
+        
+        // ⚡ SMART FIX: If storyData is just a URL string, download the real data NOW
+        let validStoryData = storyData;
 
-      setVideoLogs(prev => {
-        const newLogs = [...prev, "Starting optimized video generation..."];
-        sessionStorage.setItem("videoLogs", JSON.stringify(newLogs));
-        return newLogs;
-      });
+        if (typeof storyData === 'string' && storyData.startsWith('http')) {
+            console.log("📥 storyData is a URL. Fetching actual JSON content...");
+            setVideoLogs(prev => [...prev, "Downloading story data from server..."]);
+            
+            const response = await fetch(storyData);
+            if (!response.ok) throw new Error("Failed to download story data");
+            
+            validStoryData = await response.json();
+            
+            // Update state so we don't have to fetch again
+            setStoryData(validStoryData); 
+            sessionStorage.setItem("pendingStory", JSON.stringify(validStoryData));
+            console.log("✅ Data downloaded and saved:", validStoryData);
+        }
 
-      const result = await generateVideoFromScenes({
-        imageUrls: storyData.image_urls,
-        audioUrl: storyData.audio_url,
-        scenes: storyData.final_video_segments,
-        onProgress: (p) => {
-          const safeProgress = Math.min(Math.floor(p), 100);
-          setVideoProgress(prev => {
-            const newProgress = Math.max(prev, safeProgress);
-            sessionStorage.setItem("videoProgress", newProgress.toString());
-            return newProgress;
-          });
-          setMaxVideoProgress(prev => Math.max(prev, safeProgress));
-        },
-        onLog: (msg) => {
-          setVideoLogs(prev => {
-            const newLogs = [...prev, msg];
-            sessionStorage.setItem("videoLogs", JSON.stringify(newLogs));
-            return newLogs;
-          });
-        },
-      });
+        // 🔍 DEBUG: Log exactly what we are working with now
+        console.log("🎬 STARTING VIDEO GENERATION WITH:", validStoryData);
 
-      setVideoUrl(result.videoUrl);
-      setVideoBlob(result.blob);
-      setVideoProgress(100);
-      setMaxVideoProgress(100);
-      sessionStorage.setItem("videoProgress", "100");
+        // 3. Prepare Variables safely
+        const safeScenes = validStoryData.final_video_segments || [];
+        const safeImages = validStoryData.image_urls || validStoryData.panel_images || [];
+        const safeAudio = validStoryData.audio_url;
 
-      setTimeout(() => {
-        setIsGeneratingVideo(false);
-        sessionStorage.removeItem("isGeneratingVideo");
-        sessionStorage.removeItem("videoProgress");
-        sessionStorage.removeItem("videoLogs");
-      }, 500);
+        if (!safeImages || safeImages.length === 0) throw new Error("No images found in story data!");
+        if (!safeScenes || safeScenes.length === 0) throw new Error("No scenes found in story data!");
+        if (!safeAudio) throw new Error("No audio URL found!");
 
-      showToast.success("Video generated successfully!");
+        console.log(`Sending: ${safeImages.length} Images, ${safeScenes.length} Scenes`);
+        setVideoLogs(prev => [...prev, `Found ${safeImages.length} images and audio.`]);
 
-      console.log("Video generated:", result);
+        sessionStorage.setItem("isGeneratingVideo", "true");
+        sessionStorage.setItem("videoProgress", "0");
+        sessionStorage.setItem("videoLogs", JSON.stringify([]));
+
+        // 4. Call Generator
+        const result = await generateVideoFromScenes({
+            // Standard names
+            imageUrls: safeImages,
+            audioUrl: safeAudio,
+            scenes: safeScenes,
+            
+            // Fallback names
+            images: safeImages,     
+            segments: safeScenes,
+            
+            // Callbacks
+            onProgress: (p) => {
+              const safeProgress = Math.min(Math.floor(p), 100);
+              setVideoProgress(prev => {
+                const newProgress = Math.max(prev, safeProgress);
+                sessionStorage.setItem("videoProgress", newProgress.toString());
+                return newProgress;
+              });
+              setMaxVideoProgress(prev => Math.max(prev, safeProgress));
+            },
+            onLog: (msg) => {
+              console.log("[VideoMaker]", msg);
+              setVideoLogs(prev => {
+                const newLogs = [...prev, msg];
+                sessionStorage.setItem("videoLogs", JSON.stringify(newLogs));
+                return newLogs;
+              });
+            },
+        });
+
+        // 5. Success Handling
+        setVideoUrl(result.videoUrl);
+        setVideoBlob(result.blob);
+        setVideoProgress(100);
+        setMaxVideoProgress(100);
+        sessionStorage.setItem("videoProgress", "100");
+
+        setTimeout(() => {
+            setIsGeneratingVideo(false);
+            sessionStorage.removeItem("isGeneratingVideo");
+        }, 500);
+
+        showToast.success("Video generated successfully!");
 
     } catch (err) {
-      console.error("Video generation error:", err);
-      setError(err.message || "Video generation failed");
-      setIsGeneratingVideo(false);
-      setVideoProgress(0);
-      setMaxVideoProgress(0);
-      sessionStorage.removeItem("isGeneratingVideo");
-      sessionStorage.removeItem("videoProgress");
-      sessionStorage.removeItem("videoLogs");
-      showToast.error(err.message || "Video generation failed");
+        console.error("Video generation error:", err);
+        setError(err.message || "Video generation failed");
+        setIsGeneratingVideo(false);
+        showToast.error(err.message || "Video generation failed");
     }
   };
-
   const formatSize = (bytes) => {
     if (!bytes) return "0 Bytes";
     const sizes = ["Bytes", "KB", "MB"];

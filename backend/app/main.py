@@ -1,135 +1,77 @@
-# backend/app/main.py
 import os
-import time
-from dotenv import load_dotenv
-from fastapi import FastAPI, Request
+import random
+import asyncio
+from fastapi import FastAPI, BackgroundTasks, Form, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from app.gcp_worker import process_task_directly # We will create this helper next
+from app.utils.supabase_utils import supabase_upload
+from supabase import create_client
 
-load_dotenv()
+app = FastAPI()
 
-
-# -----------------------------------------------------
-# FASTAPI APP INITIALIZATION
-# -----------------------------------------------------
-app = FastAPI(
-    title="Manhwa AI Backend",
-    description="Transform manga PDFs into narrated cinematic videos",
-    version="1.0.0",
-    docs_url="/docs",
-    redoc_url="/redoc",
-)
-
-
-# -----------------------------------------------------
-# CORS (Allow local frontend)
-# -----------------------------------------------------
+# CORS
 app.add_middleware(
     CORSMiddleware,
-   allow_origins=[
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:8080"
-
-        # real Vercel domains:
-        "https://manhwa-a1wv8f96g-anurag-bitans-projects.vercel.app",
-        "https://manhwa-ai-git-main-anurag-bitans-projects.vercel.app",
-        "https://manhwa-ai-theta.vercel.app",
-        "*.vercel.app",
-        # Cloud Run domain
-        "https://manhwa-backend-h7g66jyc2q-el.a.run.app",
-        # "https://manhwa-backend-h7g66jyc2q-el.a.run.app",
-        "*"
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
     allow_methods=["*"],
-    expose_headers=["*"],
     allow_headers=["*"],
 )
 
+# Clients
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# -----------------------------------------------------
-# GLOBAL EXCEPTION HANDLER
-# -----------------------------------------------------
-@app.exception_handler(Exception)
-async def global_exception_handler(request: Request, exc: Exception):
-    print("\n===== GLOBAL ERROR =====")
-    print(f"Path: {request.url.path}")
-    print(f"Error: {exc}")
-    print("========================\n")
-
-    return JSONResponse(
-        status_code=500,
-        content={
-            "error": "internal_error",
-            "message": str(exc),
-            "path": request.url.path,
-        },
-    )
-
-
-# -----------------------------------------------------
-# REQUEST TIME LOGGER
-# -----------------------------------------------------
-@app.middleware("http")
-async def add_timing(request: Request, call_next):
-    start = time.time()
-    response = await call_next(request)
-    response.headers["X-Process-Time"] = f"{time.time() - start:.3f}s"
-    return response
-
-
-# -----------------------------------------------------
-# IMPORT ROUTERS
-# (now that app is initialized)
-# -----------------------------------------------------
-from app.routers import status
-from app.routers import generate_audio_story
-
-API_PREFIX = "/api/v1"
-
-app.include_router(status.router, prefix=API_PREFIX, tags=["System Status"])
-app.include_router(generate_audio_story.router, prefix=API_PREFIX, tags=["Audio & Script"])
-
-
-# -----------------------------------------------------
-# ROOT ROUTES
-# -----------------------------------------------------
 @app.get("/")
-async def root():
+def home():
+    return {"status": "Manhwa AI Running on Hugging Face"}
+
+@app.post("/api/v1/generate_audio_story")
+async def start_generation(
+    background_tasks: BackgroundTasks,
+    manga_name: str = Form(...),
+    manga_genre: str = Form(...),
+    manga_pdf: UploadFile = File(...)
+):
+    try:
+        # 1. Generate ID
+        task_id = random.getrandbits(63)
+        
+        # 2. Upload PDF
+        file_bytes = await manga_pdf.read()
+        unique_filename = f"uploads/{str(task_id)}_{manga_name[:10].replace(' ', '_')}.pdf"
+        pdf_url = supabase_upload(file_bytes, unique_filename, "application/pdf")
+
+        # 3. Create DB Entry
+        supabase.table("jobs").insert({
+            "id": task_id,
+            "status": "PROCESSING",
+            "manga_name": manga_name,
+            "pdf_url": pdf_url,
+            "created_at": "now()"
+        }).execute()
+
+        # 4. Start Processing in Background (No Queue needed!)
+        background_tasks.add_task(
+            process_task_directly, 
+            task_id, 
+            manga_name, 
+            manga_genre, 
+            pdf_url
+        )
+
+        return {"task_id": str(task_id), "status": "PROCESSING"}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/v1/status/{task_id}")
+def get_status(task_id: str):
+    res = supabase.table("jobs").select("*").eq("id", task_id).execute()
+    if not res.data: raise HTTPException(404, "Task not found")
+    rec = res.data[0]
     return {
-        "status": "running",
-        "message": "Manhwa AI Backend is live!",
-        "health": "/health",
-        "docs": "/docs"
+        "task_id": str(rec["id"]),
+        "state": rec["status"],
+        "result": rec.get("result_url")
     }
-
-
-@app.get("/health")
-async def health():
-    return {
-        "status": "healthy",
-        "time": time.time(),
-    }
-
-
-# -----------------------------------------------------
-# STARTUP & SHUTDOWN
-# -----------------------------------------------------
-@app.on_event("startup")
-async def startup():
-    print("\n================================")
-    print("  Manhwa AI Backend Started")
-    print("==============================")
-    print("Docs: http://localhost:8000/docs")
-
-    # create safe dirs
-    os.makedirs("temp", exist_ok=True)
-    os.makedirs("job_status", exist_ok=True)
-
-
-@app.on_event("shutdown")
-async def shutdown():
-    print("\n==============================")
-    print("  Backend shutdown complete.")
-    print("==============================\n")

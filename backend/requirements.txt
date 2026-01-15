@@ -1,13 +1,13 @@
 # Core
 fastapi[all]
-uvicorn[standard]
+# uvicorn[standard]
 python-dotenv
 python-multipart
 edge-tts>=6.1.9
 
 # PDF & Image Processing
 pdf2image
-opencv-python
+opencv-python-headless
 Pillow
 numpy
 
@@ -16,6 +16,7 @@ pytesseract
 
 # AI/LLM
 google-generativeai
+google-cloud-pubsub
 groq
 
 # TTS
@@ -29,6 +30,7 @@ httpx
 # Utilities
 requests
 anyio
-
-celery
-redis
+# AWS Lambda Adapter
+mangum
+awslambdaric
+boto3

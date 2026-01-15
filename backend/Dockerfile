@@ -1,50 +1,35 @@
-# ============================
-# 1. Base Image
-# ============================
+# Use Python 3.11 Slim
 FROM python:3.11-slim
 
-# =============================
-# 2. Install system dependencies (SIMPLIFIED - No FFmpeg!)
-# =============================
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
-    tesseract-ocr \
+# 1. Install System Dependencies
+RUN apt-get update && apt-get install -y \
     poppler-utils \
-    libsm6 \
-    libxext6 \
     libgl1 \
-    build-essential \
     libglib2.0-0 \
+    wget \
+    tar \
+    xz-utils \
     && rm -rf /var/lib/apt/lists/*
 
+# 2. Install FFmpeg
+RUN wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.tar.xz && \
+    tar -xvf ffmpeg-release-amd64-static.tar.xz && \
+    mv ffmpeg-*-amd64-static/ffmpeg /usr/bin/ && \
+    mv ffmpeg-*-amd64-static/ffprobe /usr/bin/ && \
+    rm -rf ffmpeg-*
 
-
-# ============================
-# 3. Set work directory
-# ============================
+# 3. Setup App & Permissions
 WORKDIR /app
 
-# ============================
-# 4. Copy requirements first (better caching)
-# ============================
-COPY requirements.txt .
+# Create a user to avoid permission issues
+RUN useradd -m -u 1000 user
+USER user
+ENV PATH="/home/user/.local/bin:$PATH"
 
-# ============================
-# 5. Install Python dependencies
-# ============================
+# 4. Copy Code
+COPY --chown=user requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
+COPY --chown=user app ./app
 
-# ============================
-# 6. Copy application code
-# ============================
-COPY app ./app
-
-# ============================
-# 7. Expose default port (Cloud Run uses $PORT)
-# ============================
-EXPOSE 8080
-
-# ============================
-# 8. Start FastAPI with Uvicorn
-# ============================
-CMD ["sh", "-c", "uvicorn app.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
+# 5. Start Command (Port 7860 for Hugging Face)
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]

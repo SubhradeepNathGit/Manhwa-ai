@@ -45,11 +45,11 @@ const UploadPage = () => {
   const fileInputRef = useRef(null);
   const videoContainerRef = useRef(null);
   const videoRef = useRef(null);
-  
-  
+
+
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth(); 
+  const { user } = useAuth();
 
   // Restore session data on mount
   useEffect(() => {
@@ -66,7 +66,7 @@ const UploadPage = () => {
         setStoryData(parsed);
         setPanelImages(parsed.image_urls || []);
         setMangaName(savedFileName);
-        
+
         const dummyFile = { name: savedFileName, size: 0, type: "application/pdf" };
         setFile(dummyFile);
 
@@ -86,7 +86,7 @@ const UploadPage = () => {
           resumeVideoGeneration(parsed);
         }
 
-        console.log("♻️ Session Restored", savedVideoUrl ? "(with video)" : "");
+        console.log(" Session Restored", savedVideoUrl ? "(with video)" : "");
       } catch (e) {
         console.error("Failed to restore session", e);
       }
@@ -117,7 +117,7 @@ const UploadPage = () => {
   const resumeVideoGeneration = async (data) => {
     try {
       setVideoLogs(prev => [...prev, "Resuming video generation..."]);
-      
+
       setVideoLogs(prev => [...prev, "Video engine ready, continuing generation..."]);
 
       const result = await generateVideoFromScenes({
@@ -195,7 +195,7 @@ const UploadPage = () => {
       setProgress(0);
       setError(null);
       setVideoLogs([]);
-      
+
       sessionStorage.removeItem("pendingStory");
       sessionStorage.removeItem("pendingFileName");
       sessionStorage.removeItem("pendingVideoUrl");
@@ -218,7 +218,7 @@ const UploadPage = () => {
     setPanelImages([]);
     setStoryData(null);
     setVideoLogs([]);
-    
+
     sessionStorage.removeItem("pendingStory");
     sessionStorage.removeItem("pendingFileName");
     sessionStorage.removeItem("pendingVideoUrl");
@@ -228,7 +228,7 @@ const UploadPage = () => {
     }
   };
 
-const handleGenerateStory = async () => {
+  const handleGenerateStory = async () => {
     if (!file || file.size === 0) {
       setError("Please upload a PDF first");
       showToast.error("Please upload a PDF first");
@@ -256,39 +256,43 @@ const handleGenerateStory = async () => {
       console.log("Task started with ID:", taskId);
 
       // 2. POLL FOR UPDATES (Every 2 seconds)
+      let hasCompleted = false; // Prevent duplicate execution
       const pollInterval = setInterval(async () => {
+        if (hasCompleted) return; // Skip if already processed
         try {
           const statusData = await checkTaskStatus(taskId);
+          if (hasCompleted) return; // Check again after async call
           console.log("Task Status:", statusData.state);
 
           if (statusData.state === 'PROCESSING') {
             // Update progress bar based on real worker progress
             setProgress(statusData.progress || 20);
-          } 
+          }
           else if (statusData.state === 'SUCCESS') {
+            hasCompleted = true; // Mark as completed immediately
             clearInterval(pollInterval);
             setProgress(100);
-                console.log("🔥 FULL BACKEND RESPONSE:", statusData);
-                console.log("🔥 RESULT OBJECT:", statusData.result);
-                console.log("🔥 IMAGE URLS:", statusData.result?.image_urls);
+            console.log(" FULL BACKEND RESPONSE:", statusData);
+            console.log("RESULT OBJECT:", statusData.result);
+            console.log("IMAGE URLS:", statusData.result?.image_urls);
             let finalResult = statusData.result;
-            
+
             setStoryData(finalResult);
             // Handle both naming conventions just in case
             if (typeof finalResult === "string" && finalResult.startsWith("http")) {
-                console.log("📥 Downloading Result JSON from:", finalResult);
-                try {
-                    const response = await fetch(finalResult);
-                    finalResult = await response.json(); // <--- THIS GETS THE REAL DATA
-                } catch (fetchErr) {
-                    console.error("Failed to fetch result JSON", fetchErr);
-                    showToast.error("Failed to load result data");
-                    return;
-                }
+              console.log(" Downloading Result JSON from:", finalResult);
+              try {
+                const response = await fetch(finalResult);
+                finalResult = await response.json(); // <--- THIS GETS THE REAL DATA
+              } catch (fetchErr) {
+                console.error("Failed to fetch result JSON", fetchErr);
+                showToast.error("Failed to load result data");
+                return;
+              }
             }
             const images = finalResult.image_urls || finalResult.panel_images || [];
             setPanelImages(images);
-            
+
             // Save to session
             sessionStorage.setItem("pendingStory", JSON.stringify(finalResult));
             sessionStorage.setItem("pendingFileName", mangaName);
@@ -298,8 +302,9 @@ const handleGenerateStory = async () => {
             }, 500);
 
             showToast.successLong(`Story Ready! ${images.length} panels, ${finalResult.total_duration}s duration. Click "Generate Video" to create final video!`);
-          } 
-          else if (statusDatfa.state === 'FAILURE') {
+          }
+          else if (statusData.state === 'FAILURE') {
+            hasCompleted = true; // Mark as completed immediately
             clearInterval(pollInterval);
             throw new Error(statusData.error || "Generation Failed");
           }
@@ -307,9 +312,9 @@ const handleGenerateStory = async () => {
           console.error("Polling Error:", err);
           // Don't stop polling on network hiccups, only on fatal errors
           if (err.message.includes("Backend returned non-JSON")) {
-             clearInterval(pollInterval);
-             setError("Server Error: " + err.message);
-             setIsProcessing(false);
+            clearInterval(pollInterval);
+            setError("Server Error: " + err.message);
+            setIsProcessing(false);
           }
         }
       }, 2000); // Check every 2 seconds
@@ -326,9 +331,9 @@ const handleGenerateStory = async () => {
   const handleGenerateVideo = async () => {
     // 1. Check Login
     if (!user) {
-        showToast.info("Login Required. Redirecting...");
-        setTimeout(() => navigate("/login", { state: { from: location.pathname } }), 2000);
-        return;
+      showToast.info("Login Required. Redirecting...");
+      setTimeout(() => navigate("/login", { state: { from: location.pathname } }), 2000);
+      return;
     }
 
     // 2. Check Data
@@ -343,97 +348,97 @@ const handleGenerateStory = async () => {
     setMaxVideoProgress(0);
     setVideoLogs([]);
     setError(null);
-    
+
     try {
-        setVideoLogs(prev => [...prev, "Checking story data..."]);
-        
-        // ⚡ SMART FIX: If storyData is just a URL string, download the real data NOW
-        let validStoryData = storyData;
+      setVideoLogs(prev => [...prev, "Checking story data..."]);
 
-        if (typeof storyData === 'string' && storyData.startsWith('http')) {
-            console.log("📥 storyData is a URL. Fetching actual JSON content...");
-            setVideoLogs(prev => [...prev, "Downloading story data from server..."]);
-            
-            const response = await fetch(storyData);
-            if (!response.ok) throw new Error("Failed to download story data");
-            
-            validStoryData = await response.json();
-            
-            // Update state so we don't have to fetch again
-            setStoryData(validStoryData); 
-            sessionStorage.setItem("pendingStory", JSON.stringify(validStoryData));
-            console.log("✅ Data downloaded and saved:", validStoryData);
-        }
+      // ⚡ SMART FIX: If storyData is just a URL string, download the real data NOW
+      let validStoryData = storyData;
 
-        // 🔍 DEBUG: Log exactly what we are working with now
-        console.log("🎬 STARTING VIDEO GENERATION WITH:", validStoryData);
+      if (typeof storyData === 'string' && storyData.startsWith('http')) {
+        console.log("📥 storyData is a URL. Fetching actual JSON content...");
+        setVideoLogs(prev => [...prev, "Downloading story data from server..."]);
 
-        // 3. Prepare Variables safely
-        const safeScenes = validStoryData.final_video_segments || [];
-        const safeImages = validStoryData.image_urls || validStoryData.panel_images || [];
-        const safeAudio = validStoryData.audio_url;
+        const response = await fetch(storyData);
+        if (!response.ok) throw new Error("Failed to download story data");
 
-        if (!safeImages || safeImages.length === 0) throw new Error("No images found in story data!");
-        if (!safeScenes || safeScenes.length === 0) throw new Error("No scenes found in story data!");
-        if (!safeAudio) throw new Error("No audio URL found!");
+        validStoryData = await response.json();
 
-        console.log(`Sending: ${safeImages.length} Images, ${safeScenes.length} Scenes`);
-        setVideoLogs(prev => [...prev, `Found ${safeImages.length} images and audio.`]);
+        // Update state so we don't have to fetch again
+        setStoryData(validStoryData);
+        sessionStorage.setItem("pendingStory", JSON.stringify(validStoryData));
+        console.log("✅ Data downloaded and saved:", validStoryData);
+      }
 
-        sessionStorage.setItem("isGeneratingVideo", "true");
-        sessionStorage.setItem("videoProgress", "0");
-        sessionStorage.setItem("videoLogs", JSON.stringify([]));
+      // 🔍 DEBUG: Log exactly what we are working with now
+      console.log("🎬 STARTING VIDEO GENERATION WITH:", validStoryData);
 
-        // 4. Call Generator
-        const result = await generateVideoFromScenes({
-            // Standard names
-            imageUrls: safeImages,
-            audioUrl: safeAudio,
-            scenes: safeScenes,
-            
-            // Fallback names
-            images: safeImages,     
-            segments: safeScenes,
-            
-            // Callbacks
-            onProgress: (p) => {
-              const safeProgress = Math.min(Math.floor(p), 100);
-              setVideoProgress(prev => {
-                const newProgress = Math.max(prev, safeProgress);
-                sessionStorage.setItem("videoProgress", newProgress.toString());
-                return newProgress;
-              });
-              setMaxVideoProgress(prev => Math.max(prev, safeProgress));
-            },
-            onLog: (msg) => {
-              console.log("[VideoMaker]", msg);
-              setVideoLogs(prev => {
-                const newLogs = [...prev, msg];
-                sessionStorage.setItem("videoLogs", JSON.stringify(newLogs));
-                return newLogs;
-              });
-            },
-        });
+      // 3. Prepare Variables safely
+      const safeScenes = validStoryData.final_video_segments || [];
+      const safeImages = validStoryData.image_urls || validStoryData.panel_images || [];
+      const safeAudio = validStoryData.audio_url;
 
-        // 5. Success Handling
-        setVideoUrl(result.videoUrl);
-        setVideoBlob(result.blob);
-        setVideoProgress(100);
-        setMaxVideoProgress(100);
-        sessionStorage.setItem("videoProgress", "100");
+      if (!safeImages || safeImages.length === 0) throw new Error("No images found in story data!");
+      if (!safeScenes || safeScenes.length === 0) throw new Error("No scenes found in story data!");
+      if (!safeAudio) throw new Error("No audio URL found!");
 
-        setTimeout(() => {
-            setIsGeneratingVideo(false);
-            sessionStorage.removeItem("isGeneratingVideo");
-        }, 500);
+      console.log(`Sending: ${safeImages.length} Images, ${safeScenes.length} Scenes`);
+      setVideoLogs(prev => [...prev, `Found ${safeImages.length} images and audio.`]);
 
-        showToast.success("Video generated successfully!");
+      sessionStorage.setItem("isGeneratingVideo", "true");
+      sessionStorage.setItem("videoProgress", "0");
+      sessionStorage.setItem("videoLogs", JSON.stringify([]));
+
+      // 4. Call Generator
+      const result = await generateVideoFromScenes({
+        // Standard names
+        imageUrls: safeImages,
+        audioUrl: safeAudio,
+        scenes: safeScenes,
+
+        // Fallback names
+        images: safeImages,
+        segments: safeScenes,
+
+        // Callbacks
+        onProgress: (p) => {
+          const safeProgress = Math.min(Math.floor(p), 100);
+          setVideoProgress(prev => {
+            const newProgress = Math.max(prev, safeProgress);
+            sessionStorage.setItem("videoProgress", newProgress.toString());
+            return newProgress;
+          });
+          setMaxVideoProgress(prev => Math.max(prev, safeProgress));
+        },
+        onLog: (msg) => {
+          console.log("[VideoMaker]", msg);
+          setVideoLogs(prev => {
+            const newLogs = [...prev, msg];
+            sessionStorage.setItem("videoLogs", JSON.stringify(newLogs));
+            return newLogs;
+          });
+        },
+      });
+
+      // 5. Success Handling
+      setVideoUrl(result.videoUrl);
+      setVideoBlob(result.blob);
+      setVideoProgress(100);
+      setMaxVideoProgress(100);
+      sessionStorage.setItem("videoProgress", "100");
+
+      setTimeout(() => {
+        setIsGeneratingVideo(false);
+        sessionStorage.removeItem("isGeneratingVideo");
+      }, 500);
+
+      showToast.success("Video generated successfully!");
 
     } catch (err) {
-        console.error("Video generation error:", err);
-        setError(err.message || "Video generation failed");
-        setIsGeneratingVideo(false);
-        showToast.error(err.message || "Video generation failed");
+      console.error("Video generation error:", err);
+      setError(err.message || "Video generation failed");
+      setIsGeneratingVideo(false);
+      showToast.error(err.message || "Video generation failed");
     }
   };
   const formatSize = (bytes) => {
@@ -446,7 +451,7 @@ const handleGenerateStory = async () => {
   // Enhanced download handler with multiple fallback methods
   const handleDownload = async () => {
     if (isDownloading) return;
-    
+
     setIsDownloading(true);
     const fileName = `${mangaName || 'manga-video'}.mp4`;
 
@@ -462,13 +467,13 @@ const handleGenerateStory = async () => {
           a.download = fileName;
           document.body.appendChild(a);
           a.click();
-          
+
           // Cleanup
           setTimeout(() => {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
           }, 100);
-          
+
           showToast.successBottom("Video downloaded successfully!");
           setIsDownloading(false);
           return;
@@ -483,7 +488,7 @@ const handleGenerateStory = async () => {
         try {
           const response = await fetch(videoUrl);
           const blob = await response.blob();
-          
+
           const url = URL.createObjectURL(blob);
           const a = document.createElement('a');
           a.style.display = 'none';
@@ -491,16 +496,16 @@ const handleGenerateStory = async () => {
           a.download = fileName;
           document.body.appendChild(a);
           a.click();
-          
+
           // Cleanup
           setTimeout(() => {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
           }, 100);
-          
+
           // Store the blob for future downloads
           setVideoBlob(blob);
-          
+
           showToast.successBottom("Video downloaded successfully!");
           setIsDownloading(false);
           return;
@@ -519,11 +524,11 @@ const handleGenerateStory = async () => {
         a.target = '_blank';
         document.body.appendChild(a);
         a.click();
-        
+
         setTimeout(() => {
           document.body.removeChild(a);
         }, 100);
-        
+
         showToast.successBottom("Download initiated!");
         setIsDownloading(false);
         return;
@@ -573,13 +578,12 @@ const handleGenerateStory = async () => {
               setIsDragging(false);
             }}
             onClick={() => fileInputRef.current?.click()}
-            className={`relative border-2 border-dotted rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 lg:p-10 transition-all duration-300 backdrop-blur-sm ${
-              isDragging
-                ? "border-purple-400 bg-purple-500/10 scale-[1.01] sm:scale-[1.02]"
-                : file
+            className={`relative border-2 border-dotted rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 lg:p-10 transition-all duration-300 backdrop-blur-sm ${isDragging
+              ? "border-purple-400 bg-purple-500/10 scale-[1.01] sm:scale-[1.02]"
+              : file
                 ? "border-purple-500 bg-purple-500/5"
                 : "border-gray-700 bg-gray-900/30"
-            } hover:border-purple-900 cursor-pointer group`}
+              } hover:border-purple-900 cursor-pointer group`}
           >
             <input
               ref={fileInputRef}
@@ -673,8 +677,8 @@ const handleGenerateStory = async () => {
                       referrerPolicy="no-referrer"
                       className="w-full h-28 sm:h-32 md:h-40 lg:h-48 object-cover rounded-lg sm:rounded-xl border border-purple-500/20 group-hover:scale-105 transition-all shadow-lg"
                       onError={(e) => {
-                          console.warn("Failed to load image:", url);
-                          e.target.style.opacity = 0.5;
+                        console.warn("Failed to load image:", url);
+                        e.target.style.opacity = 0.5;
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity rounded-lg sm:rounded-xl flex items-end justify-center pb-1.5 sm:pb-2">
@@ -711,13 +715,12 @@ const handleGenerateStory = async () => {
             ].map((opt) => (
               <label
                 key={opt.value}
-                className={`block p-2.5 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${
-                  opt.disabled
-                    ? "opacity-50 cursor-not-allowed"
-                    : mode === opt.value
+                className={`block p-2.5 sm:p-3 md:p-4 rounded-lg sm:rounded-xl border transition-all cursor-pointer ${opt.disabled
+                  ? "opacity-50 cursor-not-allowed"
+                  : mode === opt.value
                     ? "border-purple-500 bg-purple-500/10"
                     : "border-gray-700 bg-gray-800/30 hover:bg-gray-800/50 hover:border-purple-500/50"
-                }`}
+                  }`}
               >
                 <div className="flex items-center gap-2 sm:gap-2.5 md:gap-3">
                   <input
@@ -751,13 +754,12 @@ const handleGenerateStory = async () => {
           onClick={handleGenerateStory}
           disabled={isProcessing || !file || isGeneratingVideo}
           className={`w-full sm:w-auto px-5 sm:px-6 md:px-8 py-3.5 sm:py-4 md:py-5 rounded-full font-bold text-sm sm:text-base md:text-lg transition-all flex items-center justify-center gap-2 sm:gap-2.5 md:gap-3 backdrop-blur-xl border shadow-[0_8px_25px_rgba(255,255,255,0.15)] 
-  ${
-    isProcessing || !file || isGeneratingVideo
-      ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
-      : storyData
-      ? "bg-gradient-to-r from-purple-400 via-purple-400 to-indigo-500 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
-      : "bg-white/10 border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95"
-  }`}
+  ${isProcessing || !file || isGeneratingVideo
+              ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
+              : storyData
+                ? "bg-gradient-to-r from-purple-400 via-purple-400 to-indigo-500 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
+                : "bg-white/10 border-white/20 hover:bg-white/20 hover:scale-105 active:scale-95"
+            }`}
         >
           {isProcessing ? (
             <>
@@ -781,13 +783,12 @@ const handleGenerateStory = async () => {
           onClick={handleGenerateVideo}
           disabled={!storyData || isGeneratingVideo}
           className={`w-full sm:w-auto px-5 sm:px-6 md:px-8 py-3.5 sm:py-4 md:py-5 rounded-full font-bold text-sm sm:text-base md:text-lg transition-all flex items-center justify-center gap-2 sm:gap-2.5 md:gap-3 backdrop-blur-xl border shadow-[0_8px_25px_rgba(255,255,255,0.15)] 
-  ${
-    !storyData || isGeneratingVideo
-      ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
-      : videoUrl
-      ? "bg-gradient-to-r from-purple-400 via-purple-400/80 to-indigo-500 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
-      : "bg-gradient-to-r from-purple-400 via-purple-400/80 to-indigo-500 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
-  }`}
+  ${!storyData || isGeneratingVideo
+              ? "opacity-50 cursor-not-allowed bg-white/10 border-white/20"
+              : videoUrl
+                ? "bg-gradient-to-r from-purple-400 via-purple-400/80 to-indigo-500 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
+                : "bg-gradient-to-r from-purple-400 via-purple-400/80 to-indigo-500 text-white hover:from-purple-500 hover:to-purple-700 border-gray-400/50 hover:scale-105 active:scale-95"
+            }`}
         >
           {isGeneratingVideo ? (
             <>

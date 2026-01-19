@@ -95,13 +95,13 @@ const Routing = () => {
         {/* AUTH CALLBACK - No Layout */}
         <Route path="/auth/callback" element={<AuthCallback />} />
 
-        {/* 404 - CATCH ALL - CHANGED: Wrapped in Suspense and Layout */}
+        {/* 404 - CATCH ALL */}
         <Route
           path="*"
           element={
-            
+            <Layout>
               <NotFoundPage />
-        
+            </Layout>
           }
         />
       </Routes>

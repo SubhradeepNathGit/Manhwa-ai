@@ -20,8 +20,6 @@ RUN wget https://johnvansickle.com/ffmpeg/releases/ffmpeg-release-amd64-static.t
 
 # 3. Setup App & Permissions
 WORKDIR /app
-
-# Create a user to avoid permission issues
 RUN useradd -m -u 1000 user
 USER user
 ENV PATH="/home/user/.local/bin:$PATH"
@@ -31,5 +29,11 @@ COPY --chown=user requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY --chown=user app ./app
 
-# 5. Start Command (Port 7860 for Hugging Face)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# 5. Create Startup Script (Runs Worker + API)
+RUN echo '#!/bin/bash\n\
+    celery -A app.celery_app worker --loglevel=info --concurrency=1 &\n\
+    uvicorn app.main:app --host 0.0.0.0 --port 7860\n\
+    ' > /app/start.sh && chmod +x /app/start.sh
+
+# 6. Start Command
+CMD ["/app/start.sh"]

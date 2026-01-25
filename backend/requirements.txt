@@ -1,6 +1,6 @@
 # Core
 fastapi[all]
-# uvicorn[standard]
+uvicorn[standard]
 python-dotenv
 python-multipart
 edge-tts>=6.1.9
@@ -26,11 +26,15 @@ pydub
 # Storage
 supabase
 httpx
+celery[redis]
+pika
+redis
 
 # Utilities
 requests
 anyio
-# AWS Lambda Adapter
-mangum
-awslambdaric
-boto3
+
+# AWS Lambda Adapter 
+# mangum
+# awslambdaric
+# boto3
